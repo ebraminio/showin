@@ -27,5 +27,4 @@ jobs:
         with:
           tag_name: latest
           name: Latest build
-          prerelease: true
           files: build/windows/x86/release/showin.exe

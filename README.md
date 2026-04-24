@@ -29,6 +29,10 @@ The binary was decompiled using a disassembler, and the resulting pseudocode was
 
 Decompilation for interoperability, research, and education is widely considered lawful under US copyright law (17 U.S.C. § 107 — fair use) and EU Directive 2009/24/EC Article 6. No original compiled code is redistributed. If Foundstone, McAfee, or any rights holder objects, please open an issue and it will be taken down promptly.
 
+## Download
+
+**[showin.exe](https://github.com/ebraminio/showin/releases/download/latest/showin.exe)** — latest build (x86, Windows)
+
 ## Building
 
 Requires [xmake](https://xmake.io) and Visual Studio 2022.
