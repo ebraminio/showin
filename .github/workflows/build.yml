@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: xmake-io/github-action-setup-xmake@v1
+
+      - name: Configure (x86 release)
+        run: xmake f -a x86 -m release -y
+
+      - name: Build
+        run: xmake build
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          tag_name: latest
+          name: Latest build
+          prerelease: true
+          files: build/windows/x86/release/showin.exe
