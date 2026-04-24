@@ -1,5 +1,8 @@
 name: Build
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [main]
@@ -22,7 +25,6 @@ jobs:
       - name: Publish rolling release
         uses: softprops/action-gh-release@v2
         with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
           tag_name: latest
           name: Latest build
           prerelease: true
