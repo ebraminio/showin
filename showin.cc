@@ -78,8 +78,26 @@ int g_showHighlight = 0;
 HGDIOBJ ho = NULL;
 WindowList *g_windowList = NULL;
 
+static void TryEnableDpiAwareness(void)
+{
+  typedef BOOL (WINAPI *PFN)(HANDLE);
+  PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
+                                "SetProcessDpiAwarenessContext");
+  if (pfn)
+    pfn((HANDLE)(LONG_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
+}
+
+static UINT GetSystemDpi(void)
+{
+  typedef UINT (WINAPI *PFN)(void);
+  PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
+                                "GetDpiForSystem");
+  return pfn ? pfn() : 96;
+}
+
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+  TryEnableDpiAwareness();
   hInst = hInstance;
   DialogBoxParamA(hInstance, MAKEINTRESOURCEA(101), NULL, (DLGPROC)DialogFunc, 0);
   return 0;
@@ -205,7 +223,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     break;
   case WM_INITDIALOG:
     InitResources();
-    SetWindowTextA(hDlg, "ShoWin 2.00");
+    SetWindowTextA(hDlg, "ShoWin (2026)");
     PositionWindowBottomRight(hDlg);
     hDlga = GetDlgItem(hDlg, 1016);
     IconA = LoadIconA(hInst, MAKEINTRESOURCEA(104));
@@ -573,7 +591,7 @@ HFONT CreateCourierFont()
   lf.lfUnderline = 0;
   lf.lfStrikeOut = 0;
   lf.lfCharSet = 0;
-  lf.lfHeight = -11;
+  lf.lfHeight = -MulDiv(8, GetSystemDpi(), 72);
   lf.lfWeight = 400;
   lf.lfOutPrecision = 3;
   lf.lfClipPrecision = 2;
@@ -591,7 +609,7 @@ HFONT CreateSansSerifFont()
   lf.lfUnderline = 0;
   lf.lfStrikeOut = 0;
   lf.lfCharSet = 0;
-  lf.lfHeight = -11;
+  lf.lfHeight = -MulDiv(8, GetSystemDpi(), 72);
   lf.lfWeight = 700;
   lf.lfOutPrecision = 1;
   lf.lfClipPrecision = 2;
