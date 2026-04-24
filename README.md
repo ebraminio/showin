@@ -1,5 +1,7 @@
 # ShoWin — Decompilation & Reconstruction
 
+**[Download latest build](https://github.com/ebraminio/showin/releases/tag/latest)**
+
 **ShoWin** is a small Win32 utility originally written by **Robin Keir** and later acquired by [Foundstone](https://en.wikipedia.org/wiki/McAfee#Foundstone), a well-known security consulting firm, around the year 2000. The version numbering reflects this transition — as the readme bundled with the release puts it:
 
 > *"Version 2.00 does not represent any additional functionality to previous versions of ShoWin, it simply signifies the fact that ShoWin has been acquired by Foundstone."*
@@ -28,10 +30,6 @@ The binary was decompiled using a disassembler, and the resulting pseudocode was
 ## Legal note
 
 Decompilation for interoperability, research, and education is widely considered lawful under US copyright law (17 U.S.C. § 107 — fair use) and EU Directive 2009/24/EC Article 6. No original compiled code is redistributed. If Foundstone, McAfee, or any rights holder objects, please open an issue and it will be taken down promptly.
-
-## Download
-
-**[showin.exe](https://github.com/ebraminio/showin/releases/download/latest/showin.exe)** — latest build (x86, Windows)
 
 ## Building
 
