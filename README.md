@@ -1,4 +1,4 @@
-# ShoWin 2.00 — Decompilation & Reconstruction
+# ShoWin — Decompilation & Reconstruction
 
 **ShoWin** is a small Win32 utility originally written by **Robin Keir** and later acquired by [Foundstone](https://en.wikipedia.org/wiki/McAfee#Foundstone), a well-known security consulting firm, around the year 2000. The version numbering reflects this transition — as the readme bundled with the release puts it:
 

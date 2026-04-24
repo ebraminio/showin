@@ -223,7 +223,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     break;
   case WM_INITDIALOG:
     InitResources();
-    SetWindowTextA(hDlg, "ShoWin (2026)");
+    SetWindowTextA(hDlg, "ShoWin");
     PositionWindowBottomRight(hDlg);
     hDlga = GetDlgItem(hDlg, 1016);
     IconA = LoadIconA(hInst, MAKEINTRESOURCEA(104));
