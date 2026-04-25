@@ -22,15 +22,9 @@ jobs:
       - name: Build
         run: xmake build
 
-      - name: Rename artifact with commit hash
-        run: |
-          $hash = git rev-parse --short HEAD
-          Copy-Item build/windows/x86/release/showin.exe "showin-$hash.exe"
-          echo "ARTIFACT=showin-$hash.exe" >> $env:GITHUB_ENV
-
       - name: Publish rolling release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: Latest build
-          files: ${{ env.ARTIFACT }}
+          files: build/windows/x86/release/showin.exe
