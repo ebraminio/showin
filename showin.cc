@@ -15,6 +15,15 @@ struct WindowList
   int cursor;
   int count;
   CmpFn cmp;
+
+  WindowList(int capacity) : buf(new WindowEntry[capacity]), capacity(capacity), cursor(0), count(0), cmp(nullptr)
+  {
+  }
+
+  ~WindowList()
+  {
+    delete[] this->buf;
+  }
 };
 
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd);
@@ -34,7 +43,6 @@ HWND HitTestWindowList();
 void RebuildWindowList();
 BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2);
 int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2);
-static WindowList *WindowList_Init(WindowList *self, int capacity);
 static void WindowList_Push(WindowList *self, HWND hwnd, int area);
 static WindowEntry *WindowList_Get(WindowList *self, WindowEntry *out, int idx);
 static WindowEntry *WindowList_Next(WindowList *self, WindowEntry *out);
@@ -77,7 +85,7 @@ WindowList *g_windowList = NULL;
 
 static void TryEnableDpiAwareness(void)
 {
-  typedef BOOL (WINAPI *PFN)(HANDLE);
+  typedef BOOL(WINAPI * PFN)(HANDLE);
   PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
                                 "SetProcessDpiAwarenessContext");
   if (pfn)
@@ -86,7 +94,7 @@ static void TryEnableDpiAwareness(void)
 
 static UINT GetSystemDpi(void)
 {
-  typedef UINT (WINAPI *PFN)(void);
+  typedef UINT(WINAPI * PFN)(void);
   PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
                                 "GetDpiForSystem");
   return pfn ? pfn() : 96;
@@ -105,14 +113,7 @@ int InitResources()
   DWORD SysColor; // eax
   DWORD v1;       // eax
 
-  {
-    /* Allocate WindowList object */
-    WindowList *_new = (WindowList *)malloc(sizeof(WindowList));
-    if (_new)
-      g_windowList = WindowList_Init(_new, 1000);
-    else
-      g_windowList = NULL;
-  }
+  g_windowList = new WindowList(1000);
   hdc = CreateDCA(pwszDriver, NULL, NULL, NULL);
   SysColor = GetSysColor(COLOR_BTNSHADOW);
   g_h = CreatePen(PS_DOT, 0, SysColor);
@@ -133,8 +134,7 @@ BOOL CleanupResources()
   DeleteObject(g_hFontBold);
   if (g_windowList)
   {
-    free(g_windowList->buf); /* free the entry buffer */
-    free(g_windowList);      /* free the object itself */
+    delete g_windowList;
     g_windowList = NULL;
   }
   EraseHighlightRect();
@@ -346,7 +346,7 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
   HWND v11;                                             // eax
   HWND Window;                                          // eax
   LONG WindowLongA;                                     // eax
-  LONG_PTR v14;                                        // eax
+  LONG_PTR v14;                                         // eax
   LRESULT(__stdcall * v15)(HWND, UINT, WPARAM, LPARAM); // eax
   CHAR String[256];                                     // [esp+Ch] [ebp-128h] BYREF
   struct tagRECT rcDst;                                 // [esp+10Ch] [ebp-28h] BYREF
@@ -659,16 +659,6 @@ BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2)
 int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2)
 {
   return a1->area - a2->area;
-}
-
-static WindowList *WindowList_Init(WindowList *self, int capacity)
-{
-  self->capacity = capacity;
-  self->buf = (WindowEntry *)malloc(capacity * sizeof(WindowEntry));
-  self->cursor = 0;
-  self->count = 0;
-  self->cmp = NULL;
-  return self;
 }
 
 static void WindowList_Push(WindowList *self, HWND hwnd, int area)
