@@ -7,21 +7,17 @@ struct WindowEntry
   int area;
 };
 
-typedef int (*CmpFn)(WindowEntry *, WindowEntry *);
-
 struct WindowList
 {
   WindowEntry *buf;
   int capacity;
   int count;
-  CmpFn cmp;
 
   void Init(int cap)
   {
     buf = (WindowEntry *)malloc(cap * sizeof(WindowEntry));
     capacity = cap;
     count = 0;
-    cmp = nullptr;
   }
 
   void Destroy()
@@ -68,50 +64,16 @@ struct WindowList
 
   void Clear() { count = 0; }
 
-  void Sort(CmpFn fn)
+  void Sort()
   {
-    cmp = fn;
-    Quicksort(0, count - 1);
-  }
-
-  void Quicksort(int lo, int hi)
-  {
-    if (hi <= lo)
-      return;
-
-    int result = hi;
-    int a2 = lo;
-    while (1)
-    {
-      int v18 = result;
-      int v6 = a2 - 1;
-      while (1)
-      {
-        do
-          ++v6;
-        while (cmp(&buf[v6], &buf[hi]) < 0);
-        do
+    for (int i = 0; i < count - 1; i++)
+      for (int j = 0; j < count - 1 - i; j++)
+        if (buf[j].area > buf[j + 1].area)
         {
-          if (v18 <= 0)
-            break;
-          --v18;
-        } while (cmp(&buf[v18], &buf[hi]) > 0);
-        if (v6 >= v18)
-          break;
-        WindowEntry tmp = buf[v6];
-        buf[v6] = buf[v18];
-        buf[v18] = tmp;
-      }
-      WindowEntry tmp = buf[v6];
-      buf[v6] = buf[hi];
-      buf[hi] = tmp;
-      Quicksort(a2, v6 - 1);
-      result = v6 + 1;
-      a2 = v6 + 1;
-      if (hi <= v6 + 1)
-        break;
-      result = hi;
-    }
+          WindowEntry tmp = buf[j];
+          buf[j] = buf[j + 1];
+          buf[j + 1] = tmp;
+        }
   }
 };
 
@@ -223,11 +185,6 @@ HWND HitTestWindowList()
   return nullptr;
 }
 
-int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2)
-{
-  return a1->area - a2->area;
-}
-
 BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM a2)
 {
   if (g_optIncludeHidden || IsWindowVisible(hWnd))
@@ -245,7 +202,7 @@ void RebuildWindowList()
 {
   g_windowList->Clear();
   EnumWindows(EnumFunc, 0);
-  g_windowList->Sort(CompareByArea);
+  g_windowList->Sort();
 }
 
 static void UpdateHover(HWND hWnd, LPARAM lParam)
