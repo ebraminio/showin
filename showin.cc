@@ -62,10 +62,7 @@ struct WindowList
   Iterator begin() { return {this, 0}; }
   Iterator end() { return {this, count}; }
 
-  void Clear()
-  {
-    count = 0;
-  }
+  void Clear() { count = 0; }
 
   void Sort(CmpFn fn)
   {
