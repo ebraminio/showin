@@ -246,129 +246,121 @@ void RebuildWindowList()
   g_windowList->Sort(CompareByArea);
 }
 
-LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+static void UpdateHover(HWND hWnd, LPARAM lParam)
 {
-  HWND v4;                                              // ebx
-  BOOL v5;                                              // eax
-  int v6;                                               // eax
-  HCURSOR v8;                                           // eax
-  HWND v9;                                              // eax
-  HCURSOR CursorA;                                      // eax
-  HWND v11;                                             // eax
-  HWND Window;                                          // eax
-  LONG WindowLongA;                                     // eax
-  LONG_PTR v14;                                         // eax
-  LRESULT(__stdcall * v15)(HWND, UINT, WPARAM, LPARAM); // eax
-  CHAR String[256];                                     // [esp+Ch] [ebp-128h] BYREF
-  struct tagRECT rcDst;                                 // [esp+10Ch] [ebp-28h] BYREF
-  struct tagRECT Rect;                                  // [esp+11Ch] [ebp-18h] BYREF
-  HWND Parent;                                          // [esp+12Ch] [ebp-8h]
-  HWND hDlg;                                            // [esp+130h] [ebp-4h]
-
-  switch (Msg)
+  pt.x = (__int16)lParam;
+  pt.y = (short)HIWORD(lParam);
+  ClientToScreen(hWnd, &pt);
+  HWND hDlg = GetParent(hWnd);
+  CHAR String[256];
+  wsprintfA(String, "%4hd", pt.x);
+  SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
+  wsprintfA(String, "%4hd", pt.y);
+  SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
+  HWND v11 = HitTestWindowList();
+  ghWnd = v11;
+  if (v11 && v11 != g_lastHoveredHwnd)
   {
-  case WM_MOUSEMOVE:
-    if (!g_isDragging)
-      break;
-  LABEL_26:
-    pt.x = (__int16)lParam;
-    pt.y = (short)HIWORD(lParam);
-    ClientToScreen(hWnd, &pt);
-    hDlg = GetParent(hWnd);
-    wsprintfA(String, "%4hd", pt.x);
-    SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
-    wsprintfA(String, "%4hd", pt.y);
-    SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
-    v11 = HitTestWindowList();
-    ghWnd = v11;
-    if (v11 && v11 != g_lastHoveredHwnd)
+    g_lastHoveredHwnd = v11;
+    SendMessageA(v11, WM_GETTEXT, 256, (LPARAM)String);
+    SetDlgItemTextA(hDlg, IDC_TITLE, String);
+    GetClassNameA(ghWnd, String, 256);
+    SetDlgItemTextA(hDlg, IDC_CLASSNAME, String);
+    wsprintfA(String, "%-6d (0x%08X)", ghWnd, ghWnd);
+    SetDlgItemTextA(hDlg, IDC_HANDLE, String);
+    HWND Parent = GetParent(ghWnd);
+    wsprintfA(String, "%-6d (0x%08X)", Parent, Parent);
+    SetDlgItemTextA(hDlg, IDC_PARENT, String);
+    HWND Window = GetWindow(ghWnd, GW_OWNER);
+    wsprintfA(String, "%-6d (0x%08X)", Window, Window);
+    SetDlgItemTextA(hDlg, IDC_OWNER, String);
+    LONG WindowLongA = GetWindowLongA(ghWnd, GWL_ID);
+    wsprintfA(String, "%-6d (0x%08X)", WindowLongA, WindowLongA);
+    SetDlgItemTextA(hDlg, IDC_WINDOWID, String);
+    LONG_PTR v14 = GetWindowLongPtrA(ghWnd, GWLP_WNDPROC);
+    wsprintfA(String, "0x%IX", (SIZE_T)v14);
+    SetDlgItemTextA(hDlg, IDC_WNDPROC, String);
+    RECT Rect;
+    GetWindowRect(ghWnd, &Rect);
+    RECT rcDst;
+    CopyRect(&rcDst, &Rect);
+    if (Parent)
     {
-      g_lastHoveredHwnd = v11;
-      SendMessageA(v11, WM_GETTEXT, 256, (LPARAM)String);
-      SetDlgItemTextA(hDlg, IDC_TITLE, String);
-      GetClassNameA(ghWnd, String, 256);
-      SetDlgItemTextA(hDlg, IDC_CLASSNAME, String);
-      wsprintfA(String, "%-6d (0x%08X)", ghWnd, ghWnd);
-      SetDlgItemTextA(hDlg, IDC_HANDLE, String);
-      Parent = GetParent(ghWnd);
-      wsprintfA(String, "%-6d (0x%08X)", Parent, Parent);
-      SetDlgItemTextA(hDlg, IDC_PARENT, String);
-      Window = GetWindow(ghWnd, GW_OWNER);
-      wsprintfA(String, "%-6d (0x%08X)", Window, Window);
-      SetDlgItemTextA(hDlg, IDC_OWNER, String);
-      WindowLongA = GetWindowLongA(ghWnd, GWL_ID);
-      wsprintfA(String, "%-6d (0x%08X)", WindowLongA, WindowLongA);
-      SetDlgItemTextA(hDlg, IDC_WINDOWID, String);
-      v14 = GetWindowLongPtrA(ghWnd, GWLP_WNDPROC);
-      wsprintfA(String, "0x%IX", (SIZE_T)v14);
-      SetDlgItemTextA(hDlg, IDC_WNDPROC, String);
-      GetWindowRect(ghWnd, &Rect);
-      CopyRect(&rcDst, &Rect);
-      if (Parent)
-      {
-        ScreenToClient(Parent, (LPPOINT)&Rect);
-        ScreenToClient(Parent, (LPPOINT)&Rect.right);
-        wsprintfA(
-            String,
-            "x:%4d y:%4d  w:%4d h:%4d",
-            Rect.left,
-            Rect.top,
-            Rect.right - Rect.left,
-            Rect.bottom - Rect.top);
-        SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, String);
-      }
+      ScreenToClient(Parent, (LPPOINT)&Rect);
+      ScreenToClient(Parent, (LPPOINT)&Rect.right);
       wsprintfA(
           String,
           "x:%4d y:%4d  w:%4d h:%4d",
-          rcDst.left,
-          rcDst.top,
-          rcDst.right - rcDst.left,
-          rcDst.bottom - rcDst.top);
-      SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, String);
-      EraseHighlightRect();
-      DrawHighlightRect(&rcDst);
+          Rect.left,
+          Rect.top,
+          Rect.right - Rect.left,
+          Rect.bottom - Rect.top);
+      SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, String);
     }
+    wsprintfA(
+        String,
+        "x:%4d y:%4d  w:%4d h:%4d",
+        rcDst.left,
+        rcDst.top,
+        rcDst.right - rcDst.left,
+        rcDst.bottom - rcDst.top);
+    SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, String);
+    EraseHighlightRect();
+    DrawHighlightRect(&rcDst);
+  }
+}
+
+LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+  switch (Msg)
+  {
+  case WM_MOUSEMOVE:
+    if (g_isDragging)
+      UpdateHover(hWnd, lParam);
     break;
   case WM_LBUTTONDOWN:
+  {
     if (g_isDragging)
       return 0;
     RebuildWindowList();
     g_lastHoveredHwnd = 0;
     SetRect(&rc, 0, 0, 0, 0);
     SetCapture(hWnd);
-    CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
+    HCURSOR CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
     g_isDragging = 1;
-    goto LABEL_26;
+    UpdateHover(hWnd, lParam);
+    break;
+  }
   case WM_LBUTTONUP:
     if (g_isDragging)
     {
       g_isDragging = 0;
       EraseHighlightRect();
       ReleaseCapture();
-      v8 = LoadCursorA(nullptr, IDC_ARROW);
+      HCURSOR v8 = LoadCursorA(nullptr, IDC_ARROW);
       SetCursor(v8);
-      v9 = GetParent(hWnd);
+      HWND v9 = GetParent(hWnd);
       SetForegroundWindow(v9);
     }
     return 0;
   case WM_RBUTTONDOWN:
     if (g_isDragging)
     {
-      v4 = GetParent(hWnd);
+      HWND v4 = GetParent(hWnd);
       if (ghWnd != v4 && GetParent(ghWnd) != v4)
       {
         if (g_optToggleEnabled)
         {
           EraseHighlightRect();
-          v5 = IsWindowEnabled(ghWnd);
+          BOOL v5 = IsWindowEnabled(ghWnd);
           EnableWindow(ghWnd, !v5);
         }
         if (g_optToggleVisible)
         {
           EraseHighlightRect();
           /* Toggle visibility: SW_SHOW(5) if hidden, SW_HIDE(0) if visible */
-          v6 = -IsWindowVisible(ghWnd);
+          int v6 = -IsWindowVisible(ghWnd);
           v6 &= ~4; /* clear bit 2 of low byte */
           ShowWindow(ghWnd, v6 + 5);
         }
@@ -399,7 +391,7 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
     }
     return 0;
   }
-  v15 = (LRESULT(__stdcall *)(HWND, UINT, WPARAM, LPARAM))GetWindowLongPtrA(hWnd, GWLP_USERDATA);
+  auto v15 = (LRESULT(__stdcall *)(HWND, UINT, WPARAM, LPARAM))GetWindowLongPtrA(hWnd, GWLP_USERDATA);
   return CallWindowProcA(v15, hWnd, Msg, wParam, lParam);
 }
 
