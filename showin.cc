@@ -108,6 +108,7 @@ int g_showHighlight = 0;
 HGDIOBJ ho = nullptr;
 WindowList *g_windowList = nullptr;
 bool g_darkMode = false;
+WNDPROC g_origGroupBoxProc = nullptr;
 
 static void TryEnableDpiAwareness()
 {
@@ -492,15 +493,77 @@ static bool IsDarkModeActive()
   return value == 0;
 }
 
+static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+  if (g_darkMode)
+  {
+    if (msg == WM_ERASEBKGND)
+    {
+      RECT rc;
+      GetClientRect(hwnd, &rc);
+      FillRect((HDC)wParam, &rc, (HBRUSH)g_hBgBrush);
+      return 1;
+    }
+    if (msg == WM_PAINT)
+    {
+      CHAR text[256];
+      GetWindowTextA(hwnd, text, sizeof(text));
+      PAINTSTRUCT ps;
+      HDC hdc = BeginPaint(hwnd, &ps);
+      RECT rc;
+      GetClientRect(hwnd, &rc);
+      FillRect(hdc, &rc, (HBRUSH)g_hBgBrush);
+      HFONT hFont = (HFONT)SendMessageA(hwnd, WM_GETFONT, 0, 0);
+      HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+      SIZE sz;
+      GetTextExtentPoint32A(hdc, "A", 1, &sz);
+      /* Draw a simple gray border; top edge sits at mid-height of the caption */
+      HPEN hPen = CreatePen(PS_SOLID, 1, RGB(80, 80, 80));
+      HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+      HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+      Rectangle(hdc, rc.left, rc.top + sz.cy / 2, rc.right - 1, rc.bottom - 1);
+      SelectObject(hdc, hOldBrush);
+      SelectObject(hdc, hOldPen);
+      DeleteObject(hPen);
+      /* Draw caption text over the top border line */
+      if (text[0])
+      {
+        SetTextColor(hdc, RGB(242, 242, 242));
+        SetBkMode(hdc, TRANSPARENT);
+        UINT dtFlags = DT_TOP | DT_SINGLELINE;
+        dtFlags |= (GetWindowLongA(hwnd, GWL_STYLE) & BS_CENTER) ? DT_CENTER : DT_LEFT;
+        RECT textRc = {rc.left + 8, rc.top, rc.right - 8, rc.top + sz.cy};
+        DrawTextA(hdc, text, -1, &textRc, dtFlags);
+      }
+      SelectObject(hdc, hOldFont);
+      EndPaint(hwnd, &ps);
+      return 0;
+    }
+  }
+  return CallWindowProcA(g_origGroupBoxProc, hwnd, msg, wParam, lParam);
+}
+
 static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
 {
   typedef HRESULT(WINAPI *PFN)(HWND, LPCWSTR, LPCWSTR);
   static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
-  if (pfn)
+  CHAR cls[64];
+  GetClassNameA(hwnd, cls, sizeof(cls));
+  if (lstrcmpiA(cls, "Button") == 0)
   {
-    CHAR cls[64];
-    GetClassNameA(hwnd, cls, sizeof(cls));
-    if (lstrcmpiA(cls, "Button") == 0)
+    DWORD style = (DWORD)GetWindowLongA(hwnd, GWL_STYLE) & 0x0F;
+    if (style == BS_GROUPBOX)
+    {
+      /* Subclass once for custom dark WM_PAINT; no theme override needed */
+      WNDPROC cur = (WNDPROC)GetWindowLongPtrA(hwnd, GWLP_WNDPROC);
+      if (cur != GroupBoxWndProc)
+      {
+        if (!g_origGroupBoxProc)
+          g_origGroupBoxProc = cur;
+        SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
+      }
+    }
+    else if (pfn)
       pfn(hwnd, dark ? L"DarkMode_Explorer" : L"", nullptr);
   }
   return TRUE;
@@ -663,8 +726,14 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_SETTINGCHANGE:
     ApplyDarkMode(hDlg);
     break;
+  case WM_CTLCOLORDLG:
+  {
+    SetBkColor((HDC)wParam, g_darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
+    return (BOOL)(LONG_PTR)g_hBgBrush;
+  }
   case WM_CTLCOLORBTN:
   {
+    SetTextColor((HDC)wParam, g_darkMode ? RGB(242, 242, 242) : GetSysColor(COLOR_BTNTEXT));
     SetBkColor((HDC)wParam, g_darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
     return (BOOL)(LONG_PTR)g_hBgBrush;
   }
