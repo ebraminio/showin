@@ -611,18 +611,23 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       return 1;
     }
     break;
+  case WM_CTLCOLORBTN:
+  {
+    SetBkColor((HDC)wParam, GetSysColor(COLOR_BTNFACE));
+    return (BOOL)(LONG_PTR)g_hBgBrush;
+  }
   case WM_CTLCOLORSTATIC:
   {
     LONG WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
     if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
     {
       SetTextColor((HDC)wParam, RGB(0, 0, 0xC0));
-      DWORD SysColor = GetSysColor(COLOR_BTNFACE);
-      SetBkColor((HDC)wParam, SysColor);
-      SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, (LONG_PTR)g_hBgBrush);
-      return TRUE;
+      SetBkColor((HDC)wParam, GetSysColor(COLOR_BTNFACE));
+      return (BOOL)(LONG_PTR)g_hBgBrush;
     }
-    break;
+    SetTextColor((HDC)wParam, GetSysColor(COLOR_BTNTEXT));
+    SetBkColor((HDC)wParam, GetSysColor(COLOR_BTNFACE));
+    return (BOOL)(LONG_PTR)g_hBgBrush;
   }
   default:
     return 0;
