@@ -107,6 +107,7 @@ int g_optToggleVisible = 0;
 int g_showHighlight = 0;
 HGDIOBJ ho = nullptr;
 WindowList *g_windowList = nullptr;
+bool g_darkMode = false;
 
 static void TryEnableDpiAwareness()
 {
@@ -476,6 +477,53 @@ BOOL PositionWindowBottomRight(HWND hWnd)
   return SetWindowPos(hWnd, nullptr, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
 }
 
+static bool IsDarkModeActive()
+{
+  DWORD value = 1;
+  DWORD size = sizeof(value);
+  HKEY key;
+  if (RegOpenKeyExA(HKEY_CURRENT_USER,
+        "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+        0, KEY_READ, &key) == ERROR_SUCCESS)
+  {
+    RegQueryValueExA(key, "AppsUseLightTheme", nullptr, nullptr, (LPBYTE)&value, &size);
+    RegCloseKey(key);
+  }
+  return value == 0;
+}
+
+static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
+{
+  typedef HRESULT(WINAPI *PFN)(HWND, LPCWSTR, LPCWSTR);
+  static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
+  if (pfn)
+  {
+    CHAR cls[64];
+    GetClassNameA(hwnd, cls, sizeof(cls));
+    if (lstrcmpiA(cls, "Button") == 0)
+      pfn(hwnd, dark ? L"DarkMode_Explorer" : L"", nullptr);
+  }
+  return TRUE;
+}
+
+static void ApplyDarkMode(HWND hDlg)
+{
+  g_darkMode = IsDarkModeActive();
+  {
+    typedef HRESULT(WINAPI *PFN)(HWND, DWORD, LPCVOID, DWORD);
+    static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("dwmapi.dll"), "DwmSetWindowAttribute");
+    if (pfn)
+    {
+      BOOL dark = g_darkMode ? TRUE : FALSE;
+      pfn(hDlg, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
+    }
+  }
+  EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)g_darkMode);
+  DeleteObject(g_hBgBrush);
+  g_hBgBrush = CreateSolidBrush(g_darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
+  InvalidateRect(hDlg, nullptr, TRUE);
+}
+
 LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 {
   HWND DlgItem = GetDlgItem(hDlg, nIDDlgItem);
@@ -507,6 +555,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     InitResources();
     SetWindowTextA(hDlg, "ShoWin");
     PositionWindowBottomRight(hDlg);
+    ApplyDarkMode(hDlg);
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
     HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
@@ -611,22 +660,26 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       return 1;
     }
     break;
+  case WM_SETTINGCHANGE:
+    ApplyDarkMode(hDlg);
+    break;
   case WM_CTLCOLORBTN:
   {
-    SetBkColor((HDC)wParam, GetSysColor(COLOR_BTNFACE));
+    SetBkColor((HDC)wParam, g_darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
     return (BOOL)(LONG_PTR)g_hBgBrush;
   }
   case WM_CTLCOLORSTATIC:
   {
     LONG WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
+    COLORREF bg = g_darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE);
     if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
     {
-      SetTextColor((HDC)wParam, RGB(0, 0, 0xC0));
-      SetBkColor((HDC)wParam, GetSysColor(COLOR_BTNFACE));
+      SetTextColor((HDC)wParam, g_darkMode ? RGB(100, 163, 212) : RGB(0, 0, 0xC0));
+      SetBkColor((HDC)wParam, bg);
       return (BOOL)(LONG_PTR)g_hBgBrush;
     }
-    SetTextColor((HDC)wParam, GetSysColor(COLOR_BTNTEXT));
-    SetBkColor((HDC)wParam, GetSysColor(COLOR_BTNFACE));
+    SetTextColor((HDC)wParam, g_darkMode ? RGB(242, 242, 242) : GetSysColor(COLOR_BTNTEXT));
+    SetBkColor((HDC)wParam, bg);
     return (BOOL)(LONG_PTR)g_hBgBrush;
   }
   default:
