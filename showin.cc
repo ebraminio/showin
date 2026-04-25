@@ -134,26 +134,8 @@ struct WindowList
   }
 };
 
-int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd);
-int InitResources();
-BOOL CleanupResources();
-void __cdecl DrawHighlightRect(RECT *a1);
-BOOL EraseHighlightRect();
-BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
-void __cdecl DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3);
-int __cdecl LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *a5);
-BOOL __cdecl PositionWindowBottomRight(HWND hWnd);
-HFONT CreateCourierFont();
-HFONT CreateSansSerifFont();
-LRESULT __cdecl SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam);
-HWND HitTestWindowList();
-void RebuildWindowList();
-BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2);
-int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2);
-
 /* Label static controls (left column) and their paired value controls (right column)
-   used by the "Copy to clipboard" function (button 1031). */
+   used by the "Copy to clipboard" function (IDC_COPY). */
 int g_labelControlIds[] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
 int g_valueControlIds[] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
 CHAR pwszDriver[] = "DISPLAY";
@@ -182,7 +164,7 @@ int g_showHighlight = 0;
 HGDIOBJ ho = NULL;
 WindowList *g_windowList = NULL;
 
-static void TryEnableDpiAwareness(void)
+static void TryEnableDpiAwareness()
 {
   typedef BOOL(WINAPI * PFN)(HANDLE);
   PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
@@ -191,36 +173,40 @@ static void TryEnableDpiAwareness(void)
     pfn((HANDLE)(LONG_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
 }
 
-static UINT GetSystemDpi(void)
+static UINT GetSystemDpi()
 {
-  typedef UINT(WINAPI * PFN)(void);
+  typedef UINT(WINAPI * PFN)();
   PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
                                 "GetDpiForSystem");
   return pfn ? pfn() : 96;
 }
 
-int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+void DrawHighlightRect(RECT *a1)
 {
-  TryEnableDpiAwareness();
-  hInst = hInstance;
-  DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_MAIN), NULL, (DLGPROC)DialogFunc, 0);
-  return 0;
+  if (!g_showHighlight)
+    return;
+  HGDIOBJ h = SelectObject(hdc, g_h);
+  int rop2 = SetROP2(hdc, R2_XORPEN);
+  MoveToEx(hdc, a1->left - 1, a1->top - 1, NULL);
+  LineTo(hdc, a1->right, a1->top - 1);
+  LineTo(hdc, a1->right, a1->bottom);
+  LineTo(hdc, a1->left - 1, a1->bottom);
+  LineTo(hdc, a1->left - 1, a1->top - 1);
+  MoveToEx(hdc, a1->left - 2, a1->top - 2, NULL);
+  LineTo(hdc, a1->right + 1, a1->top - 2);
+  LineTo(hdc, a1->right + 1, a1->bottom + 1);
+  LineTo(hdc, a1->left - 2, a1->bottom + 1);
+  LineTo(hdc, a1->left - 2, a1->top - 2);
+  SetROP2(hdc, rop2);
+  SelectObject(hdc, h);
+  SetRect(&rc, a1->left, a1->top, a1->right, a1->bottom);
 }
 
-int InitResources()
+BOOL EraseHighlightRect()
 {
-  DWORD SysColor; // eax
-  DWORD v1;       // eax
-
-  g_windowList = new WindowList(1000);
-  hdc = CreateDCA(pwszDriver, NULL, NULL, NULL);
-  SysColor = GetSysColor(COLOR_BTNSHADOW);
-  g_h = CreatePen(PS_DOT, 0, SysColor);
-  v1 = GetSysColor(COLOR_BTNFACE);
-  g_hBgBrush = CreateSolidBrush(v1);
-  g_hFontNormal = (HGDIOBJ)CreateCourierFont();
-  g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
-  return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
+  if (!IsRectEmpty(&rc))
+    DrawHighlightRect(&rc);
+  return SetRect(&rc, 0, 0, 0, 0);
 }
 
 BOOL CleanupResources()
@@ -242,196 +228,44 @@ BOOL CleanupResources()
   return DeleteDC(hdc);
 }
 
-void __cdecl DrawHighlightRect(RECT *a1)
+HWND HitTestWindowList()
 {
-  int rop2;  // [esp+0h] [ebp-8h]
-  HGDIOBJ h; // [esp+4h] [ebp-4h]
+  struct tagRECT Rect;
+  WindowEntry e;
 
-  if (g_showHighlight)
+  for (g_windowList->Get(&e, 0); e.hwnd; g_windowList->Next(&e))
   {
-    h = SelectObject(hdc, g_h);
-    rop2 = SetROP2(hdc, R2_XORPEN);
-    MoveToEx(hdc, a1->left - 1, a1->top - 1, NULL);
-    LineTo(hdc, a1->right, a1->top - 1);
-    LineTo(hdc, a1->right, a1->bottom);
-    LineTo(hdc, a1->left - 1, a1->bottom);
-    LineTo(hdc, a1->left - 1, a1->top - 1);
-    MoveToEx(hdc, a1->left - 2, a1->top - 2, NULL);
-    LineTo(hdc, a1->right + 1, a1->top - 2);
-    LineTo(hdc, a1->right + 1, a1->bottom + 1);
-    LineTo(hdc, a1->left - 2, a1->bottom + 1);
-    LineTo(hdc, a1->left - 2, a1->top - 2);
-    SetROP2(hdc, rop2);
-    SelectObject(hdc, h);
-    SetRect(&rc, a1->left, a1->top, a1->right, a1->bottom);
+    GetWindowRect(e.hwnd, &Rect);
+    if (PtInRect(&Rect, pt))
+      return e.hwnd;
   }
+  return NULL;
 }
 
-BOOL EraseHighlightRect()
+int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2)
 {
-  if (!IsRectEmpty(&rc))
-    DrawHighlightRect(&rc);
-  return SetRect(&rc, 0, 0, 0, 0);
+  return a1->area - a2->area;
 }
 
-BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM a2)
 {
-  LONG WindowLongA;      // eax
-  DWORD SysColor;        // eax
-  int v7;                // ebx
-  unsigned int i;        // esi
-  unsigned int v9;       // kr04_4
-  char *v10;             // ebx
-  unsigned int v11;      // kr0C_4
-  char *v12;             // edi
-  char *v13;             // ebx
-  unsigned int v14;      // kr10_4
-  char *v15;             // edi
-  char *v16;             // ebx
-  LRESULT v17;           // eax
-  LRESULT v18;           // eax
-  HICON IconA;           // eax
-  LONG_PTR v21;          // eax
-  HWND v22;              // eax
-  HWND DlgItem;          // eax
-  CHAR String[256];      // [esp+10h] [ebp-100h] BYREF
-  HWND hDlga;            // [esp+118h] [ebp+8h]
-  HGLOBAL v26;           // [esp+120h] [ebp+10h]
-  unsigned int nResulta; // [esp+124h] [ebp+14h]
+  struct tagRECT Rect; // [esp+4h] [ebp-10h] BYREF
 
-  switch (uMsg)
+  if (g_optIncludeHidden || IsWindowVisible(hWnd))
   {
-  case WM_ACTIVATE:
-    if (!(WORD)wParam)
-    {
-      DlgItem = GetDlgItem(hDlg, IDC_DRAG_BTN);
-      SendMessageA(DlgItem, WM_LBUTTONUP, 0, 0);
-    }
-    break;
-  case WM_CLOSE:
-    EraseHighlightRect();
-    CleanupResources();
-    EndDialog(hDlg, lParam);
-    break;
-  case WM_DRAWITEM:
-    if (wParam == IDC_LOGO_PREVIEW)
-      DrawBitmapPreview(hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
-    break;
-  case WM_INITDIALOG:
-    InitResources();
-    SetWindowTextA(hDlg, "ShoWin");
-    PositionWindowBottomRight(hDlg);
-    hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
-    IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
-    SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
-    v21 = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
-    SetWindowLongPtrA(hDlga, GWLP_USERDATA, v21);
-    SetControlFont(hDlg, IDC_TITLE, (WPARAM)g_hFontBold);
-    SetControlFont(hDlg, IDC_HANDLE, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, IDC_PARENT, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, IDC_OWNER, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, IDC_WINDOWID, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, IDC_CLIENT_COORDS, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, IDC_WINDOW_COORDS, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, IDC_WNDPROC, (WPARAM)g_hFontNormal);
-    v22 = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
-    SendMessageA(v22, BM_SETCHECK, BST_CHECKED, 0);
-    g_showHighlight = 1;
-    g_lastHoveredHwnd = 0;
-    ghWnd = NULL;
-    g_isDragging = 0;
-    break;
-  case WM_COMMAND:
-    switch (LOWORD(wParam))
-    {
-    case IDC_OPT_HIDESHOW:
-      g_optToggleVisible = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
-      break;
-    case IDC_OPT_ENABLE:
-      g_optToggleEnabled = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
-      break;
-    case IDC_OPT_HIGHLIGHT:
-      g_showHighlight = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
-      break;
-    case IDC_OPT_REPAINT:
-      g_optRedrawWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
-      break;
-    case IDC_OPT_INVISIBLE:
-      g_optIncludeHidden = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
-      break;
-    case IDC_OPT_CLOSE:
-      g_optCloseWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
-      break;
-    case IDC_COPY:
-      v7 = 0;
-      for (i = 0; i < 9; ++i)
-      {
-        GetDlgItemTextA(hDlg, g_labelControlIds[i], String, 256);
-        v9 = strlen(String) + 1;
-        GetDlgItemTextA(hDlg, g_valueControlIds[i], String, 256);
-        v7 += v9 + 1 + strlen(String) + 2;
-      }
-      OpenClipboard(hDlg);
-      EmptyClipboard();
-      v26 = GlobalAlloc(GHND, v7 + 1);
-      nResulta = 0;
-      v10 = (char *)GlobalLock(v26);
-      do
-      {
-        GetDlgItemTextA(hDlg, g_labelControlIds[nResulta], String, 256);
-        v11 = strlen(String) + 1;
-        memcpy(v10, String, 4 * ((v11 - 1) >> 2));
-        v12 = &v10[4 * ((v11 - 1) >> 2)];
-        v13 = &v10[v11 - 1];
-        memcpy(v12, &String[4 * ((v11 - 1) >> 2)], ((BYTE)v11 - 1) & 3);
-        *v13++ = ':';
-        *v13++ = '\t';
-        GetDlgItemTextA(hDlg, g_valueControlIds[nResulta], String, 256);
-        v14 = strlen(String) + 1;
-        memcpy(v13, String, 4 * ((v14 - 1) >> 2));
-        v15 = &v13[4 * ((v14 - 1) >> 2)];
-        ++nResulta;
-        v16 = &v13[v14 - 1];
-        memcpy(v15, &String[4 * ((v14 - 1) >> 2)], ((BYTE)v14 - 1) & 3);
-        *v16++ = '\r';
-        *v16 = '\n';
-        v10 = v16 + 1;
-      } while (nResulta < 9);
-      GlobalUnlock(v26);
-      SetClipboardData(CF_TEXT, v26);
-      CloseClipboard();
-      break;
-    case IDC_OPT_ONTOP:
-      v17 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
-      g_optSetNoActivate = v17 == 1;
-      if (v17 == 1 && g_optSetTopmost)
-        SendDlgItemMessageA(hDlg, IDC_OPT_NOTONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
-      break;
-    case IDC_OPT_NOTONTOP:
-      v18 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
-      g_optSetTopmost = v18 == 1;
-      if (v18 == 1 && g_optSetNoActivate)
-        SendDlgItemMessageA(hDlg, IDC_OPT_ONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
-      break;
-    default:
-      return 1;
-    }
-    break;
-  case WM_CTLCOLORSTATIC:
-    WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
-    if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
-    {
-      SetTextColor((HDC)wParam, RGB(0, 0, 0xC0));
-      SysColor = GetSysColor(COLOR_BTNFACE);
-      SetBkColor((HDC)wParam, SysColor);
-      SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, (LONG_PTR)g_hBgBrush);
-      return TRUE;
-    }
-    break;
-  default:
-    return 0;
+    GetWindowRect(hWnd, &Rect);
+    if (!IsRectEmpty(&Rect))
+      g_windowList->Push(hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
+    EnumChildWindows(hWnd, EnumFunc, 0);
   }
   return 1;
+}
+
+void RebuildWindowList()
+{
+  g_windowList->Clear();
+  EnumWindows(EnumFunc, 0);
+  g_windowList->Sort(CompareByArea);
 }
 
 LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
@@ -467,7 +301,7 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
     SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
     wsprintfA(String, "%4hd", pt.y);
     SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
-    v11 = (HWND)HitTestWindowList();
+    v11 = HitTestWindowList();
     ghWnd = v11;
     if (v11 && v11 != g_lastHoveredHwnd)
     {
@@ -667,17 +501,6 @@ int __cdecl LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4,
   return 1;
 }
 
-BOOL __cdecl PositionWindowBottomRight(HWND hWnd)
-{
-  RECT pvParam; // [esp+4h] [ebp-20h] BYREF -- SPI_GETWORKAREA fills a full RECT (16 bytes)
-  // v3 (right) and v4 (bottom) were stack spill from SPI filling beyond pvParam[8]
-  struct tagRECT Rect; // [esp+14h] [ebp-10h] BYREF
-
-  SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
-  GetWindowRect(hWnd, &Rect);
-  return SetWindowPos(hWnd, NULL, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
-}
-
 HFONT CreateCourierFont()
 {
   LOGFONTA lf = {};
@@ -712,52 +535,198 @@ HFONT CreateSansSerifFont()
   return CreateFontIndirectA(&lf);
 }
 
+int InitResources()
+{
+  g_windowList = new WindowList(1000);
+  hdc = CreateDCA(pwszDriver, NULL, NULL, NULL);
+  DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
+  g_h = CreatePen(PS_DOT, 0, SysColor);
+  DWORD v1 = GetSysColor(COLOR_BTNFACE);
+  g_hBgBrush = CreateSolidBrush(v1);
+  g_hFontNormal = (HGDIOBJ)CreateCourierFont();
+  g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
+  return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
+}
+
+BOOL __cdecl PositionWindowBottomRight(HWND hWnd)
+{
+  RECT pvParam;
+  struct tagRECT Rect;
+  SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
+  GetWindowRect(hWnd, &Rect);
+  return SetWindowPos(hWnd, NULL, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
+}
+
 LRESULT __cdecl SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 {
-  HWND DlgItem; // eax
-
-  DlgItem = GetDlgItem(hDlg, nIDDlgItem);
+  HWND DlgItem = GetDlgItem(hDlg, nIDDlgItem);
   return SendMessageA(DlgItem, WM_SETFONT, wParam, TRUE);
 }
 
-HWND HitTestWindowList()
+BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  struct tagRECT Rect;
-  WindowEntry e;
+  LONG WindowLongA;      // eax
+  DWORD SysColor;        // eax
+  int v7;                // ebx
+  unsigned int i;        // esi
+  unsigned int v9;       // kr04_4
+  char *v10;             // ebx
+  unsigned int v11;      // kr0C_4
+  char *v12;             // edi
+  char *v13;             // ebx
+  unsigned int v14;      // kr10_4
+  char *v15;             // edi
+  char *v16;             // ebx
+  LRESULT v17;           // eax
+  LRESULT v18;           // eax
+  HICON IconA;           // eax
+  LONG_PTR v21;          // eax
+  HWND v22;              // eax
+  HWND DlgItem;          // eax
+  CHAR String[256];      // [esp+10h] [ebp-100h] BYREF
+  HWND hDlga;            // [esp+118h] [ebp+8h]
+  HGLOBAL v26;           // [esp+120h] [ebp+10h]
+  unsigned int nResulta; // [esp+124h] [ebp+14h]
 
-  for (g_windowList->Get(&e, 0); e.hwnd; g_windowList->Next(&e))
+  switch (uMsg)
   {
-    GetWindowRect(e.hwnd, &Rect);
-    if (PtInRect(&Rect, pt))
-      return e.hwnd;
-  }
-  return NULL;
-}
-
-void RebuildWindowList()
-{
-  g_windowList->Clear();
-  EnumWindows(EnumFunc, 0);
-  g_windowList->Sort(CompareByArea);
-}
-
-BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2)
-{
-  struct tagRECT Rect; // [esp+4h] [ebp-10h] BYREF
-
-  if (g_optIncludeHidden || IsWindowVisible(hWnd))
-  {
-    GetWindowRect(hWnd, &Rect);
-    if (!IsRectEmpty(&Rect))
-      g_windowList->Push(hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
-    EnumChildWindows(hWnd, EnumFunc, 0);
+  case WM_ACTIVATE:
+    if (!(WORD)wParam)
+    {
+      DlgItem = GetDlgItem(hDlg, IDC_DRAG_BTN);
+      SendMessageA(DlgItem, WM_LBUTTONUP, 0, 0);
+    }
+    break;
+  case WM_CLOSE:
+    EraseHighlightRect();
+    CleanupResources();
+    EndDialog(hDlg, lParam);
+    break;
+  case WM_DRAWITEM:
+    if (wParam == IDC_LOGO_PREVIEW)
+      DrawBitmapPreview(hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
+    break;
+  case WM_INITDIALOG:
+    InitResources();
+    SetWindowTextA(hDlg, "ShoWin");
+    PositionWindowBottomRight(hDlg);
+    hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
+    IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
+    SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
+    v21 = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
+    SetWindowLongPtrA(hDlga, GWLP_USERDATA, v21);
+    SetControlFont(hDlg, IDC_TITLE, (WPARAM)g_hFontBold);
+    SetControlFont(hDlg, IDC_HANDLE, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_PARENT, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_OWNER, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_WINDOWID, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_CLIENT_COORDS, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_WINDOW_COORDS, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_WNDPROC, (WPARAM)g_hFontNormal);
+    v22 = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
+    SendMessageA(v22, BM_SETCHECK, BST_CHECKED, 0);
+    g_showHighlight = 1;
+    g_lastHoveredHwnd = 0;
+    ghWnd = NULL;
+    g_isDragging = 0;
+    break;
+  case WM_COMMAND:
+    switch (LOWORD(wParam))
+    {
+    case IDC_OPT_HIDESHOW:
+      g_optToggleVisible = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      break;
+    case IDC_OPT_ENABLE:
+      g_optToggleEnabled = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      break;
+    case IDC_OPT_HIGHLIGHT:
+      g_showHighlight = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      break;
+    case IDC_OPT_REPAINT:
+      g_optRedrawWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      break;
+    case IDC_OPT_INVISIBLE:
+      g_optIncludeHidden = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      break;
+    case IDC_OPT_CLOSE:
+      g_optCloseWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      break;
+    case IDC_COPY:
+      v7 = 0;
+      for (i = 0; i < 9; ++i)
+      {
+        GetDlgItemTextA(hDlg, g_labelControlIds[i], String, 256);
+        v9 = strlen(String) + 1;
+        GetDlgItemTextA(hDlg, g_valueControlIds[i], String, 256);
+        v7 += v9 + 1 + strlen(String) + 2;
+      }
+      OpenClipboard(hDlg);
+      EmptyClipboard();
+      v26 = GlobalAlloc(GHND, v7 + 1);
+      nResulta = 0;
+      v10 = (char *)GlobalLock(v26);
+      do
+      {
+        GetDlgItemTextA(hDlg, g_labelControlIds[nResulta], String, 256);
+        v11 = strlen(String) + 1;
+        memcpy(v10, String, 4 * ((v11 - 1) >> 2));
+        v12 = &v10[4 * ((v11 - 1) >> 2)];
+        v13 = &v10[v11 - 1];
+        memcpy(v12, &String[4 * ((v11 - 1) >> 2)], ((BYTE)v11 - 1) & 3);
+        *v13++ = ':';
+        *v13++ = '\t';
+        GetDlgItemTextA(hDlg, g_valueControlIds[nResulta], String, 256);
+        v14 = strlen(String) + 1;
+        memcpy(v13, String, 4 * ((v14 - 1) >> 2));
+        v15 = &v13[4 * ((v14 - 1) >> 2)];
+        ++nResulta;
+        v16 = &v13[v14 - 1];
+        memcpy(v15, &String[4 * ((v14 - 1) >> 2)], ((BYTE)v14 - 1) & 3);
+        *v16++ = '\r';
+        *v16 = '\n';
+        v10 = v16 + 1;
+      } while (nResulta < 9);
+      GlobalUnlock(v26);
+      SetClipboardData(CF_TEXT, v26);
+      CloseClipboard();
+      break;
+    case IDC_OPT_ONTOP:
+      v17 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
+      g_optSetNoActivate = v17 == 1;
+      if (v17 == 1 && g_optSetTopmost)
+        SendDlgItemMessageA(hDlg, IDC_OPT_NOTONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
+      break;
+    case IDC_OPT_NOTONTOP:
+      v18 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
+      g_optSetTopmost = v18 == 1;
+      if (v18 == 1 && g_optSetNoActivate)
+        SendDlgItemMessageA(hDlg, IDC_OPT_ONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
+      break;
+    default:
+      return 1;
+    }
+    break;
+  case WM_CTLCOLORSTATIC:
+    WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
+    if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
+    {
+      SetTextColor((HDC)wParam, RGB(0, 0, 0xC0));
+      SysColor = GetSysColor(COLOR_BTNFACE);
+      SetBkColor((HDC)wParam, SysColor);
+      SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, (LONG_PTR)g_hBgBrush);
+      return TRUE;
+    }
+    break;
+  default:
+    return 0;
   }
   return 1;
 }
 
-int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2)
+int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-  return a1->area - a2->area;
+  TryEnableDpiAwareness();
+  hInst = hInstance;
+  DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_MAIN), NULL, (DLGPROC)DialogFunc, 0);
+  return 0;
 }
-
-
