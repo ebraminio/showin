@@ -581,9 +581,7 @@ BOOL __cdecl PositionWindowBottomRight(HWND hWnd)
 
 HFONT CreateCourierFont()
 {
-  LOGFONTA lf; // [esp+8h] [ebp-3Ch] BYREF
-
-  memset(&lf.lfWidth, 0, 12);
+  LOGFONTA lf = {};
   lf.lfItalic = 0;
   lf.lfUnderline = 0;
   lf.lfStrikeOut = 0;
@@ -600,9 +598,7 @@ HFONT CreateCourierFont()
 
 HFONT CreateSansSerifFont()
 {
-  LOGFONTA lf; // [esp+8h] [ebp-3Ch] BYREF
-
-  memset(&lf.lfWidth, 0, 12);
+  LOGFONTA lf = {};
   lf.lfItalic = 0;
   lf.lfUnderline = 0;
   lf.lfStrikeOut = 0;
