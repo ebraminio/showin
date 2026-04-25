@@ -4,4 +4,7 @@ target("showin", function()
     set_kind("binary")
     add_files("showin.cc", "showin.rc")
     add_syslinks("user32", "gdi32")
+    if is_plat("mingw") then
+        add_ldflags("-mwindows", {force = true})
+    end
 end)

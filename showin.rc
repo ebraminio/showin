@@ -1,4 +1,28 @@
-#include <winresrc.h>
+/* winresrc.h is MSVC-only; define the constants we need for windres (MinGW). */
+#define WS_POPUP            0x80000000
+#define WS_CHILD            0x40000000
+#define WS_VISIBLE          0x10000000
+#define WS_CAPTION          0x00C00000
+#define WS_SYSMENU          0x00080000
+#define WS_MINIMIZEBOX      0x00020000
+#define WS_GROUP            0x00020000
+#define WS_TABSTOP          0x00010000
+#define DS_SETFONT          0x40
+#define DS_MODALFRAME       0x80
+#define BS_PUSHBUTTON       0x00000000
+#define BS_AUTOCHECKBOX     0x00000003
+#define BS_GROUPBOX         0x00000007
+#define BS_OWNERDRAW        0x0000000B
+#define BS_BITMAP           0x00000080
+#define BS_CENTER           0x00000300
+#define SS_LEFT             0x00000000
+#define SS_CENTER           0x00000001
+#define SS_ICON             0x00000003
+#define SS_LEFTNOWORDWRAP   0x0000000C
+#define WS_EX_CLIENTEDGE    0x00000200
+#define BUTTON              "BUTTON"
+#define STATIC              "STATIC"
+
 LANGUAGE 9, 1
 
 102 BITMAP "BITMAP102_1.bmp"
@@ -6,7 +30,6 @@ LANGUAGE 9, 1
 101 DIALOGEX 0, 0, 245, 165
 STYLE DS_SETFONT | DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION ""
-LANGUAGE 9, 1
 FONT 8, "MS Sans Serif"
 {
    CONTROL "robin.keir@foundstone.com", 1001, BUTTON, BS_OWNERDRAW | BS_BITMAP | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 4, 4, 24, 157 
@@ -77,6 +100,6 @@ BLOCK "StringFileInfo"
 
 BLOCK "VarFileInfo"
 {
-	VALUE "Translation", 0x0409 0x04B0  
+	VALUE "Translation", 0x0409, 0x04B0
 }
 }

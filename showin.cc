@@ -45,9 +45,6 @@ static void WindowList_Clear(WindowList *self);
 static void WindowList_Sort(WindowList *self, CmpFn cmp);
 static void WindowList_Quicksort(WindowList *self, int lo, int hi);
 
-//-------------------------------------------------------------------------
-// Data declarations
-
 /* Label static controls (left column) and their paired value controls (right column)
    used by the "Copy to clipboard" function (button 1031). */
 int g_labelControlIds[] = {1040, 1032, 1033, 1034, 1035, 1036, 1037, 1038, 1039};
