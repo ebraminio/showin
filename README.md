@@ -25,7 +25,7 @@ ShoWin has not been maintained or distributed commercially since the early 2000s
 
 This is an AI-assisted decompilation and reconstruction of `showin.exe` (version 2.0.0.0, Copyright © 2000 Foundstone, Inc., timestamp 2000-11-13, 24 KB). The goal is software preservation and education.
 
-The binary was decompiled using a disassembler, and the resulting pseudocode was cleaned up and corrected with the help of an AI assistant. The bulk of the work — resolving magic numbers, naming data structures, and restoring x64 compatibility — is done. The reconstructed source compiles and runs on modern Windows. There is still room to improve: the code can be made more idiomatic, and the tool itself could be updated to align with modern OS conventions such as HiDPI scaling and dark mode theming.
+The binary was decompiled using a disassembler, and the resulting pseudocode was cleaned up and corrected with the help of an AI assistant. The bulk of the work — resolving magic numbers, naming data structures, and restoring x64 compatibility — is done. The reconstructed source compiles and runs on modern Windows. There is still room to improve: the code can be made more idiomatic, and the tool itself could be updated to align with modern OS conventions such as dark mode theming.
 
 ## Legal note
 
