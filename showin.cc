@@ -1,4 +1,5 @@
 #include <windows.h>
+#include "resource.h"
 
 struct WindowEntry
 {
@@ -153,8 +154,8 @@ int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2);
 
 /* Label static controls (left column) and their paired value controls (right column)
    used by the "Copy to clipboard" function (button 1031). */
-int g_labelControlIds[] = {1040, 1032, 1033, 1034, 1035, 1036, 1037, 1038, 1039};
-int g_valueControlIds[] = {1002, 1004, 1003, 1017, 1025, 1023, 1007, 1005, 1006};
+int g_labelControlIds[] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
+int g_valueControlIds[] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
 CHAR pwszDriver[] = "DISPLAY";
 int g_optCloseWindow = 0;
 HWND g_lastHoveredHwnd = NULL;
@@ -202,7 +203,7 @@ int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 {
   TryEnableDpiAwareness();
   hInst = hInstance;
-  DialogBoxParamA(hInstance, MAKEINTRESOURCEA(101), NULL, (DLGPROC)DialogFunc, 0);
+  DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_MAIN), NULL, (DLGPROC)DialogFunc, 0);
   return 0;
 }
 
@@ -219,7 +220,7 @@ int InitResources()
   g_hBgBrush = CreateSolidBrush(v1);
   g_hFontNormal = (HGDIOBJ)CreateCourierFont();
   g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
-  return LoadBitmapResource((HGDIOBJ)102, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
+  return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
 BOOL CleanupResources()
@@ -303,7 +304,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_ACTIVATE:
     if (!(WORD)wParam)
     {
-      DlgItem = GetDlgItem(hDlg, 1016);
+      DlgItem = GetDlgItem(hDlg, IDC_DRAG_BTN);
       SendMessageA(DlgItem, WM_LBUTTONUP, 0, 0);
     }
     break;
@@ -313,27 +314,27 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     EndDialog(hDlg, lParam);
     break;
   case WM_DRAWITEM:
-    if (wParam == 1001)
-      DrawBitmapPreview(hDlg, 1001, (DRAWITEMSTRUCT *)lParam);
+    if (wParam == IDC_LOGO_PREVIEW)
+      DrawBitmapPreview(hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
     break;
   case WM_INITDIALOG:
     InitResources();
     SetWindowTextA(hDlg, "ShoWin");
     PositionWindowBottomRight(hDlg);
-    hDlga = GetDlgItem(hDlg, 1016);
-    IconA = LoadIconA(hInst, MAKEINTRESOURCEA(104));
+    hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
+    IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     v21 = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, v21);
-    SetControlFont(hDlg, 1002, (WPARAM)g_hFontBold);
-    SetControlFont(hDlg, 1003, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, 1017, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, 1025, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, 1023, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, 1005, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, 1006, (WPARAM)g_hFontNormal);
-    SetControlFont(hDlg, 1007, (WPARAM)g_hFontNormal);
-    v22 = GetDlgItem(hDlg, 1022);
+    SetControlFont(hDlg, IDC_TITLE, (WPARAM)g_hFontBold);
+    SetControlFont(hDlg, IDC_HANDLE, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_PARENT, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_OWNER, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_WINDOWID, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_CLIENT_COORDS, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_WINDOW_COORDS, (WPARAM)g_hFontNormal);
+    SetControlFont(hDlg, IDC_WNDPROC, (WPARAM)g_hFontNormal);
+    v22 = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(v22, BM_SETCHECK, BST_CHECKED, 0);
     g_showHighlight = 1;
     g_lastHoveredHwnd = 0;
@@ -343,25 +344,25 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_COMMAND:
     switch (LOWORD(wParam))
     {
-    case 1020:
+    case IDC_OPT_HIDESHOW:
       g_optToggleVisible = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
-    case 1021:
+    case IDC_OPT_ENABLE:
       g_optToggleEnabled = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
-    case 1022:
+    case IDC_OPT_HIGHLIGHT:
       g_showHighlight = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
-    case 1026:
+    case IDC_OPT_REPAINT:
       g_optRedrawWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
-    case 1028:
+    case IDC_OPT_INVISIBLE:
       g_optIncludeHidden = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
-    case 1030:
+    case IDC_OPT_CLOSE:
       g_optCloseWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
-    case 1031:
+    case IDC_COPY:
       v7 = 0;
       for (i = 0; i < 9; ++i)
       {
@@ -400,17 +401,17 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       SetClipboardData(CF_TEXT, v26);
       CloseClipboard();
       break;
-    case 1045:
+    case IDC_OPT_ONTOP:
       v17 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
       g_optSetNoActivate = v17 == 1;
       if (v17 == 1 && g_optSetTopmost)
-        SendDlgItemMessageA(hDlg, 1046, BM_SETCHECK, BST_UNCHECKED, 0);
+        SendDlgItemMessageA(hDlg, IDC_OPT_NOTONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
       break;
-    case 1046:
+    case IDC_OPT_NOTONTOP:
       v18 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
       g_optSetTopmost = v18 == 1;
       if (v18 == 1 && g_optSetNoActivate)
-        SendDlgItemMessageA(hDlg, 1045, BM_SETCHECK, BST_UNCHECKED, 0);
+        SendDlgItemMessageA(hDlg, IDC_OPT_ONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
       break;
     default:
       return 1;
@@ -418,7 +419,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     break;
   case WM_CTLCOLORSTATIC:
     WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
-    if (WindowLongA == 1004 || WindowLongA == 1003 || WindowLongA == 1017 || WindowLongA == 1025 || WindowLongA == 1023 || WindowLongA == 1005 || WindowLongA == 1006 || WindowLongA == 1007)
+    if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
     {
       SetTextColor((HDC)wParam, RGB(0, 0, 0xC0));
       SysColor = GetSysColor(COLOR_BTNFACE);
@@ -463,32 +464,32 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
     ClientToScreen(hWnd, &pt);
     hDlg = GetParent(hWnd);
     wsprintfA(String, "%4hd", pt.x);
-    SetDlgItemTextA(hDlg, 1011, String);
+    SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
     wsprintfA(String, "%4hd", pt.y);
-    SetDlgItemTextA(hDlg, 1012, String);
+    SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
     v11 = (HWND)HitTestWindowList();
     ghWnd = v11;
     if (v11 && v11 != g_lastHoveredHwnd)
     {
       g_lastHoveredHwnd = v11;
       SendMessageA(v11, WM_GETTEXT, 256, (LPARAM)String);
-      SetDlgItemTextA(hDlg, 1002, String);
+      SetDlgItemTextA(hDlg, IDC_TITLE, String);
       GetClassNameA(ghWnd, String, 256);
-      SetDlgItemTextA(hDlg, 1004, String);
+      SetDlgItemTextA(hDlg, IDC_CLASSNAME, String);
       wsprintfA(String, "%-6d (0x%08X)", ghWnd, ghWnd);
-      SetDlgItemTextA(hDlg, 1003, String);
+      SetDlgItemTextA(hDlg, IDC_HANDLE, String);
       Parent = GetParent(ghWnd);
       wsprintfA(String, "%-6d (0x%08X)", Parent, Parent);
-      SetDlgItemTextA(hDlg, 1017, String);
+      SetDlgItemTextA(hDlg, IDC_PARENT, String);
       Window = GetWindow(ghWnd, GW_OWNER);
       wsprintfA(String, "%-6d (0x%08X)", Window, Window);
-      SetDlgItemTextA(hDlg, 1025, String);
+      SetDlgItemTextA(hDlg, IDC_OWNER, String);
       WindowLongA = GetWindowLongA(ghWnd, GWL_ID);
       wsprintfA(String, "%-6d (0x%08X)", WindowLongA, WindowLongA);
-      SetDlgItemTextA(hDlg, 1023, String);
+      SetDlgItemTextA(hDlg, IDC_WINDOWID, String);
       v14 = GetWindowLongPtrA(ghWnd, GWLP_WNDPROC);
       wsprintfA(String, "0x%IX", (SIZE_T)v14);
-      SetDlgItemTextA(hDlg, 1007, String);
+      SetDlgItemTextA(hDlg, IDC_WNDPROC, String);
       GetWindowRect(ghWnd, &Rect);
       CopyRect(&rcDst, &Rect);
       if (Parent)
@@ -502,7 +503,7 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
             Rect.top,
             Rect.right - Rect.left,
             Rect.bottom - Rect.top);
-        SetDlgItemTextA(hDlg, 1005, String);
+        SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, String);
       }
       wsprintfA(
           String,
@@ -511,7 +512,7 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
           rcDst.top,
           rcDst.right - rcDst.left,
           rcDst.bottom - rcDst.top);
-      SetDlgItemTextA(hDlg, 1006, String);
+      SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, String);
       EraseHighlightRect();
       DrawHighlightRect(&rcDst);
     }
@@ -523,7 +524,7 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
     g_lastHoveredHwnd = 0;
     SetRect(&rc, 0, 0, 0, 0);
     SetCapture(hWnd);
-    CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(103));
+    CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
     g_isDragging = 1;
     goto LABEL_26;
