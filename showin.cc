@@ -395,7 +395,7 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
   return CallWindowProcA(v15, hWnd, Msg, wParam, lParam);
 }
 
-void __cdecl DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3)
+void DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3)
 {
   HDC v3 = a3->hDC;
   if (ho)
@@ -411,7 +411,7 @@ void __cdecl DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3)
   }
 }
 
-int __cdecl LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *a5)
+int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *a5)
 {
   *hdc = nullptr;
   *a3 = nullptr;
@@ -506,7 +506,7 @@ int InitResources()
   return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
-BOOL __cdecl PositionWindowBottomRight(HWND hWnd)
+BOOL PositionWindowBottomRight(HWND hWnd)
 {
   RECT pvParam;
   struct tagRECT Rect;
@@ -515,7 +515,7 @@ BOOL __cdecl PositionWindowBottomRight(HWND hWnd)
   return SetWindowPos(hWnd, nullptr, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
 }
 
-LRESULT __cdecl SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
+LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 {
   HWND DlgItem = GetDlgItem(hDlg, nIDDlgItem);
   return SendMessageA(DlgItem, WM_SETFONT, wParam, TRUE);
@@ -523,35 +523,12 @@ LRESULT __cdecl SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  LONG WindowLongA;      // eax
-  DWORD SysColor;        // eax
-  int v7;                // ebx
-  unsigned int i;        // esi
-  unsigned int v9;       // kr04_4
-  char *v10;             // ebx
-  unsigned int v11;      // kr0C_4
-  char *v12;             // edi
-  char *v13;             // ebx
-  unsigned int v14;      // kr10_4
-  char *v15;             // edi
-  char *v16;             // ebx
-  LRESULT v17;           // eax
-  LRESULT v18;           // eax
-  HICON IconA;           // eax
-  LONG_PTR v21;          // eax
-  HWND v22;              // eax
-  HWND DlgItem;          // eax
-  CHAR String[256];      // [esp+10h] [ebp-100h] BYREF
-  HWND hDlga;            // [esp+118h] [ebp+8h]
-  HGLOBAL v26;           // [esp+120h] [ebp+10h]
-  unsigned int nResulta; // [esp+124h] [ebp+14h]
-
   switch (uMsg)
   {
   case WM_ACTIVATE:
     if (!(WORD)wParam)
     {
-      DlgItem = GetDlgItem(hDlg, IDC_DRAG_BTN);
+      HWND DlgItem = GetDlgItem(hDlg, IDC_DRAG_BTN);
       SendMessageA(DlgItem, WM_LBUTTONUP, 0, 0);
     }
     break;
@@ -565,13 +542,14 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       DrawBitmapPreview(hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
     break;
   case WM_INITDIALOG:
+  {
     InitResources();
     SetWindowTextA(hDlg, "ShoWin");
     PositionWindowBottomRight(hDlg);
-    hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
-    IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
+    HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
+    HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
-    v21 = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
+    LONG_PTR v21 = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, v21);
     SetControlFont(hDlg, IDC_TITLE, (WPARAM)g_hFontBold);
     SetControlFont(hDlg, IDC_HANDLE, (WPARAM)g_hFontNormal);
@@ -581,13 +559,14 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetControlFont(hDlg, IDC_CLIENT_COORDS, (WPARAM)g_hFontNormal);
     SetControlFont(hDlg, IDC_WINDOW_COORDS, (WPARAM)g_hFontNormal);
     SetControlFont(hDlg, IDC_WNDPROC, (WPARAM)g_hFontNormal);
-    v22 = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
+    HWND v22 = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(v22, BM_SETCHECK, BST_CHECKED, 0);
     g_showHighlight = 1;
     g_lastHoveredHwnd = 0;
     ghWnd = nullptr;
     g_isDragging = 0;
     break;
+  }
   case WM_COMMAND:
     switch (LOWORD(wParam))
     {
@@ -610,35 +589,37 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       g_optCloseWindow = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
       break;
     case IDC_COPY:
-      v7 = 0;
-      for (i = 0; i < 9; ++i)
+    {
+      CHAR String[256];
+      int v7 = 0;
+      for (unsigned int i = 0; i < 9; ++i)
       {
         GetDlgItemTextA(hDlg, g_labelControlIds[i], String, 256);
-        v9 = strlen(String) + 1;
+        unsigned int v9 = strlen(String) + 1;
         GetDlgItemTextA(hDlg, g_valueControlIds[i], String, 256);
         v7 += v9 + 1 + strlen(String) + 2;
       }
       OpenClipboard(hDlg);
       EmptyClipboard();
-      v26 = GlobalAlloc(GHND, v7 + 1);
-      nResulta = 0;
-      v10 = (char *)GlobalLock(v26);
+      HGLOBAL v26 = GlobalAlloc(GHND, v7 + 1);
+      unsigned int nResulta = 0;
+      char *v10 = (char *)GlobalLock(v26);
       do
       {
         GetDlgItemTextA(hDlg, g_labelControlIds[nResulta], String, 256);
-        v11 = strlen(String) + 1;
+        unsigned int v11 = strlen(String) + 1;
         memcpy(v10, String, 4 * ((v11 - 1) >> 2));
-        v12 = &v10[4 * ((v11 - 1) >> 2)];
-        v13 = &v10[v11 - 1];
+        char *v12 = &v10[4 * ((v11 - 1) >> 2)];
+        char *v13 = &v10[v11 - 1];
         memcpy(v12, &String[4 * ((v11 - 1) >> 2)], ((BYTE)v11 - 1) & 3);
         *v13++ = ':';
         *v13++ = '\t';
         GetDlgItemTextA(hDlg, g_valueControlIds[nResulta], String, 256);
-        v14 = strlen(String) + 1;
+        unsigned int v14 = strlen(String) + 1;
         memcpy(v13, String, 4 * ((v14 - 1) >> 2));
-        v15 = &v13[4 * ((v14 - 1) >> 2)];
+        char *v15 = &v13[4 * ((v14 - 1) >> 2)];
         ++nResulta;
-        v16 = &v13[v14 - 1];
+        char *v16 = &v13[v14 - 1];
         memcpy(v15, &String[4 * ((v14 - 1) >> 2)], ((BYTE)v14 - 1) & 3);
         *v16++ = '\r';
         *v16 = '\n';
@@ -648,33 +629,40 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       SetClipboardData(CF_TEXT, v26);
       CloseClipboard();
       break;
+    }
     case IDC_OPT_ONTOP:
-      v17 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
+    {
+      LRESULT v17 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
       g_optSetNoActivate = v17 == 1;
       if (v17 == 1 && g_optSetTopmost)
         SendDlgItemMessageA(hDlg, IDC_OPT_NOTONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
       break;
+    }
     case IDC_OPT_NOTONTOP:
-      v18 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
+    {
+      LRESULT v18 = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
       g_optSetTopmost = v18 == 1;
       if (v18 == 1 && g_optSetNoActivate)
         SendDlgItemMessageA(hDlg, IDC_OPT_ONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
       break;
+    }
     default:
       return 1;
     }
     break;
   case WM_CTLCOLORSTATIC:
-    WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
+  {
+    LONG WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
     if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
     {
       SetTextColor((HDC)wParam, RGB(0, 0, 0xC0));
-      SysColor = GetSysColor(COLOR_BTNFACE);
+      DWORD SysColor = GetSysColor(COLOR_BTNFACE);
       SetBkColor((HDC)wParam, SysColor);
       SetWindowLongPtrA(hDlg, DWLP_MSGRESULT, (LONG_PTR)g_hBgBrush);
       return TRUE;
     }
     break;
+  }
   default:
     return 0;
   }
