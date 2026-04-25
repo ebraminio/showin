@@ -24,6 +24,113 @@ struct WindowList
   {
     delete[] this->buf;
   }
+
+  void Push(HWND hwnd, int area)
+  {
+    if (count >= capacity)
+    {
+      int newcap = capacity + capacity / 2;
+      capacity = newcap;
+      buf = (WindowEntry *)realloc(buf, newcap * sizeof(WindowEntry));
+    }
+    buf[count].hwnd = hwnd;
+    buf[count].area = area;
+    count++;
+  }
+
+  WindowEntry *Get(WindowEntry *out, int idx)
+  {
+    if (idx < 0)
+      idx = cursor;
+    if (idx >= count)
+    {
+      out->hwnd = NULL;
+      out->area = 0;
+    }
+    else
+    {
+      cursor = idx;
+      *out = buf[idx];
+    }
+    return out;
+  }
+
+  WindowEntry *Next(WindowEntry *out)
+  {
+    Get(out, -1); /* read entry at current cursor */
+    if (cursor < count)
+      cursor++;
+    return out;
+  }
+
+  int Seek(int idx)
+  {
+    if (idx >= 0 && idx < count)
+      cursor = idx;
+    return idx;
+  }
+
+  int GetPos()
+  {
+    return cursor;
+  }
+
+  int Count()
+  {
+    return count;
+  }
+
+  void Clear()
+  {
+    count = 0;
+    cursor = 0;
+  }
+
+  void Sort(CmpFn fn)
+  {
+    cmp = fn;
+    Quicksort(0, count - 1);
+  }
+
+  void Quicksort(int lo, int hi)
+  {
+    if (hi <= lo)
+      return;
+
+    int result = hi;
+    int a2 = lo;
+    while (1)
+    {
+      int v18 = result;
+      int v6 = a2 - 1;
+      while (1)
+      {
+        do
+          ++v6;
+        while (cmp(&buf[v6], &buf[hi]) < 0);
+        do
+        {
+          if (v18 <= 0)
+            break;
+          --v18;
+        } while (cmp(&buf[v18], &buf[hi]) > 0);
+        if (v6 >= v18)
+          break;
+        WindowEntry tmp = buf[v6];
+        buf[v6] = buf[v18];
+        buf[v18] = tmp;
+      }
+      WindowEntry tmp = buf[v6];
+      buf[v6] = buf[hi];
+      buf[hi] = tmp;
+      Quicksort(a2, v6 - 1);
+      result = v6 + 1;
+      a2 = v6 + 1;
+      if (hi <= v6 + 1)
+        break;
+      result = hi;
+    }
+  }
 };
 
 int __stdcall WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd);
@@ -43,15 +150,6 @@ HWND HitTestWindowList();
 void RebuildWindowList();
 BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2);
 int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2);
-static void WindowList_Push(WindowList *self, HWND hwnd, int area);
-static WindowEntry *WindowList_Get(WindowList *self, WindowEntry *out, int idx);
-static WindowEntry *WindowList_Next(WindowList *self, WindowEntry *out);
-static int WindowList_Seek(WindowList *self, int idx);
-static int WindowList_GetPos(WindowList *self);
-static int WindowList_Count(WindowList *self);
-static void WindowList_Clear(WindowList *self);
-static void WindowList_Sort(WindowList *self, CmpFn cmp);
-static void WindowList_Quicksort(WindowList *self, int lo, int hi);
 
 /* Label static controls (left column) and their paired value controls (right column)
    used by the "Copy to clipboard" function (button 1031). */
@@ -626,7 +724,7 @@ HWND HitTestWindowList()
   struct tagRECT Rect;
   WindowEntry e;
 
-  for (WindowList_Get(g_windowList, &e, 0); e.hwnd; WindowList_Next(g_windowList, &e))
+  for (g_windowList->Get(&e, 0); e.hwnd; g_windowList->Next(&e))
   {
     GetWindowRect(e.hwnd, &Rect);
     if (PtInRect(&Rect, pt))
@@ -637,9 +735,9 @@ HWND HitTestWindowList()
 
 void RebuildWindowList()
 {
-  WindowList_Clear(g_windowList);
+  g_windowList->Clear();
   EnumWindows(EnumFunc, 0);
-  WindowList_Sort(g_windowList, CompareByArea);
+  g_windowList->Sort(CompareByArea);
 }
 
 BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2)
@@ -650,7 +748,7 @@ BOOL __stdcall EnumFunc(HWND hWnd, LPARAM a2)
   {
     GetWindowRect(hWnd, &Rect);
     if (!IsRectEmpty(&Rect))
-      WindowList_Push(g_windowList, hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
+      g_windowList->Push(hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
     EnumChildWindows(hWnd, EnumFunc, 0);
   }
   return 1;
@@ -661,109 +759,4 @@ int __cdecl CompareByArea(WindowEntry *a1, WindowEntry *a2)
   return a1->area - a2->area;
 }
 
-static void WindowList_Push(WindowList *self, HWND hwnd, int area)
-{
-  if (self->count >= self->capacity)
-  {
-    int newcap = self->capacity + self->capacity / 2;
-    self->capacity = newcap;
-    self->buf = (WindowEntry *)realloc(self->buf, newcap * sizeof(WindowEntry));
-  }
-  self->buf[self->count].hwnd = hwnd;
-  self->buf[self->count].area = area;
-  self->count++;
-}
 
-static WindowEntry *WindowList_Get(WindowList *self, WindowEntry *out, int idx)
-{
-  if (idx < 0)
-    idx = self->cursor;
-  if (idx >= self->count)
-  {
-    out->hwnd = NULL;
-    out->area = 0;
-  }
-  else
-  {
-    self->cursor = idx;
-    *out = self->buf[idx];
-  }
-  return out;
-}
-
-static WindowEntry *WindowList_Next(WindowList *self, WindowEntry *out)
-{
-  WindowList_Get(self, out, -1); /* read entry at current cursor */
-  if (self->cursor < self->count)
-    self->cursor++;
-  return out;
-}
-
-static int WindowList_Seek(WindowList *self, int idx)
-{
-  if (idx >= 0 && idx < self->count)
-    self->cursor = idx;
-  return idx;
-}
-
-static int WindowList_GetPos(WindowList *self)
-{
-  return self->cursor;
-}
-
-static int WindowList_Count(WindowList *self)
-{
-  return self->count;
-}
-
-static void WindowList_Clear(WindowList *self)
-{
-  self->count = 0;
-  self->cursor = 0;
-}
-
-static void WindowList_Sort(WindowList *self, CmpFn cmp)
-{
-  self->cmp = cmp;
-  WindowList_Quicksort(self, 0, self->count - 1);
-}
-
-static void WindowList_Quicksort(WindowList *self, int lo, int hi)
-{
-  if (hi <= lo)
-    return;
-
-  int result = hi;
-  int a2 = lo;
-  while (1)
-  {
-    int v18 = result;
-    int v6 = a2 - 1;
-    while (1)
-    {
-      do
-        ++v6;
-      while (self->cmp(&self->buf[v6], &self->buf[hi]) < 0);
-      do
-      {
-        if (v18 <= 0)
-          break;
-        --v18;
-      } while (self->cmp(&self->buf[v18], &self->buf[hi]) > 0);
-      if (v6 >= v18)
-        break;
-      WindowEntry tmp = self->buf[v6];
-      self->buf[v6] = self->buf[v18];
-      self->buf[v18] = tmp;
-    }
-    WindowEntry tmp = self->buf[v6];
-    self->buf[v6] = self->buf[hi];
-    self->buf[hi] = tmp;
-    WindowList_Quicksort(self, a2, v6 - 1);
-    result = v6 + 1;
-    a2 = v6 + 1;
-    if (hi <= v6 + 1)
-      break;
-    result = hi;
-  }
-}
