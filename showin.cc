@@ -16,13 +16,17 @@ struct WindowList
   int count;
   CmpFn cmp;
 
-  WindowList(int capacity) : buf(new WindowEntry[capacity]), capacity(capacity), count(0), cmp(nullptr)
+  void Init(int cap)
   {
+    buf = (WindowEntry *)malloc(cap * sizeof(WindowEntry));
+    capacity = cap;
+    count = 0;
+    cmp = nullptr;
   }
 
-  ~WindowList()
+  void Destroy()
   {
-    delete[] this->buf;
+    free(buf);
   }
 
   void Push(HWND hwnd, int area)
@@ -196,7 +200,8 @@ BOOL CleanupResources()
   DeleteObject(g_hFontBold);
   if (g_windowList)
   {
-    delete g_windowList;
+    g_windowList->Destroy();
+    free(g_windowList);
     g_windowList = nullptr;
   }
   EraseHighlightRect();
@@ -492,7 +497,8 @@ HFONT CreateSansSerifFont()
 
 int InitResources()
 {
-  g_windowList = new WindowList(1000);
+  g_windowList = (WindowList *)malloc(sizeof(WindowList));
+  g_windowList->Init(1000);
   hdc = CreateDCA(pwszDriver, nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
   g_h = CreatePen(PS_DOT, 0, SysColor);
