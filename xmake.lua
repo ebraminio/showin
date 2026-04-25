@@ -6,6 +6,6 @@ target("showin", function()
     add_syslinks("user32", "gdi32", "advapi32")
     if is_plat("mingw") then
         add_ldflags("-mwindows", {force = true})
-        add_cxxflags("-fno-exceptions", "-fno-rtti", {force = true})
+        add_cxxflags("-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", {force = true})
     end
 end)
