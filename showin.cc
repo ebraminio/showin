@@ -66,6 +66,7 @@ struct WindowList
 
   void Sort()
   {
+    // Originally it was using a quick sort, let's use a bubble sort anyway
     for (int i = 0; i < count - 1; i++)
       for (int j = 0; j < count - 1 - i; j++)
         if (buf[j].area > buf[j + 1].area)
