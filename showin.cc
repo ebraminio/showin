@@ -13,11 +13,10 @@ struct WindowList
 {
   WindowEntry *buf;
   int capacity;
-  int cursor;
   int count;
   CmpFn cmp;
 
-  WindowList(int capacity) : buf(new WindowEntry[capacity]), capacity(capacity), cursor(0), count(0), cmp(nullptr)
+  WindowList(int capacity) : buf(new WindowEntry[capacity]), capacity(capacity), count(0), cmp(nullptr)
   {
   }
 
@@ -39,52 +38,33 @@ struct WindowList
     count++;
   }
 
-  WindowEntry *Get(WindowEntry *out, int idx)
+  WindowEntry &operator[](int idx)
   {
-    if (idx < 0)
-      idx = cursor;
-    if (idx >= count)
+    static WindowEntry sentinel = {};
+    if (idx < 0 || idx >= count)
+      return sentinel;
+    return buf[idx];
+  }
+
+  struct Iterator
+  {
+    WindowList *list;
+    int idx;
+    WindowEntry &operator*() { return (*list)[idx]; }
+    Iterator &operator++()
     {
-      out->hwnd = nullptr;
-      out->area = 0;
+      idx++;
+      return *this;
     }
-    else
-    {
-      cursor = idx;
-      *out = buf[idx];
-    }
-    return out;
-  }
+    bool operator!=(const Iterator &other) const { return idx != other.idx; }
+  };
 
-  WindowEntry *Next(WindowEntry *out)
-  {
-    Get(out, -1); /* read entry at current cursor */
-    if (cursor < count)
-      cursor++;
-    return out;
-  }
-
-  int Seek(int idx)
-  {
-    if (idx >= 0 && idx < count)
-      cursor = idx;
-    return idx;
-  }
-
-  int GetPos()
-  {
-    return cursor;
-  }
-
-  int Count()
-  {
-    return count;
-  }
+  Iterator begin() { return {this, 0}; }
+  Iterator end() { return {this, count}; }
 
   void Clear()
   {
     count = 0;
-    cursor = 0;
   }
 
   void Sort(CmpFn fn)
@@ -231,9 +211,8 @@ BOOL CleanupResources()
 HWND HitTestWindowList()
 {
   struct tagRECT Rect;
-  WindowEntry e;
 
-  for (g_windowList->Get(&e, 0); e.hwnd; g_windowList->Next(&e))
+  for (auto &e : *g_windowList)
   {
     GetWindowRect(e.hwnd, &Rect);
     if (PtInRect(&Rect, pt))
