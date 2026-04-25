@@ -267,7 +267,7 @@ void RebuildWindowList()
   g_windowList->Sort(CompareByArea);
 }
 
-LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
   HWND v4;                                              // ebx
   BOOL v5;                                              // eax
@@ -426,13 +426,10 @@ LRESULT __stdcall CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lP
 
 void __cdecl DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3)
 {
-  HDC v3;           // edi
-  HDC CompatibleDC; // ebx
-
-  v3 = a3->hDC;
+  HDC v3 = a3->hDC;
   if (ho)
   {
-    CompatibleDC = CreateCompatibleDC(v3);
+    HDC CompatibleDC = CreateCompatibleDC(v3);
     SelectObject(CompatibleDC, ho);
     SelectPalette(v3, (HPALETTE)hPal, 0);
     RealizePalette(v3);
@@ -445,41 +442,32 @@ void __cdecl DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3)
 
 int __cdecl LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *a5)
 {
-  HANDLE ImageA;      // eax
-  int v8;             // edi
-  LOGPALETTE *v9;     // esi
-  BYTE *p_rgbGreen;   // ecx
-  BYTE *p_peGreen;    // eax
-  HDC DC;             // edi
-  RGBQUAD prgbq[256]; // [esp+Ch] [ebp-418h] BYREF -- GetDIBColorTable writes 256 RGBQUAD entries = 1024 bytes
-  BITMAP pv;          // [esp+40Ch] [ebp-18h] BYREF -- GetObjectA fills 24 bytes (BITMAP struct)
-  HGDIOBJ ha;         // [esp+42Ch] [ebp+8h]
-  HDC hdca;           // [esp+430h] [ebp+Ch]
-
   *hdc = nullptr;
   *a3 = nullptr;
-  ImageA = LoadImageA(hInst, MAKEINTRESOURCEA((WORD)(UINT_PTR)h), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+  HANDLE ImageA = LoadImageA(hInst, MAKEINTRESOURCEA((WORD)(UINT_PTR)h), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
   *hdc = ImageA;
   if (!ImageA)
     return 0;
+  BITMAP pv;
   GetObjectA(ImageA, sizeof(BITMAP), &pv);
   if (pv.bmBitsPixel * pv.bmPlanes > 8)
   {
-    DC = GetDC(nullptr);
+    HDC DC = GetDC(nullptr);
     *a3 = CreateHalftonePalette(DC);
     ReleaseDC(nullptr, DC);
   }
   else
   {
-    hdca = CreateCompatibleDC(nullptr);
-    ha = SelectObject(hdca, *hdc);
-    v8 = 256;
+    HDC hdca = CreateCompatibleDC(nullptr);
+    HGDIOBJ ha = SelectObject(hdca, *hdc);
+    int v8 = 256;
+    RGBQUAD prgbq[256];
     GetDIBColorTable(hdca, 0, 0x100u, prgbq);
-    v9 = (LOGPALETTE *)malloc(sizeof(LOGPALETTE) + 256 * sizeof(PALETTEENTRY));
-    p_rgbGreen = &prgbq[0].rgbGreen;
+    LOGPALETTE *v9 = (LOGPALETTE *)malloc(sizeof(LOGPALETTE) + 256 * sizeof(PALETTEENTRY));
+    BYTE *p_rgbGreen = &prgbq[0].rgbGreen;
     v9->palVersion = 0x300 /* LOGPALETTE version */;
     v9->palNumEntries = 256;
-    p_peGreen = &v9->palPalEntry[0].peGreen;
+    BYTE *p_peGreen = &v9->palPalEntry[0].peGreen;
     do
     {
       *(p_peGreen - 1) = p_rgbGreen[1];
