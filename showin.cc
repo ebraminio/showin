@@ -593,7 +593,8 @@ HFONT CreateCourierFont()
   lf.lfOutPrecision = 3;
   lf.lfClipPrecision = 2;
   lf.lfQuality = 1;
-  strcpy((char *)&lf.lfPitchAndFamily, "1Courier New");
+  lf.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
+  strcpy(lf.lfFaceName, "Courier New");
   return CreateFontIndirectA(&lf);
 }
 
@@ -611,7 +612,8 @@ HFONT CreateSansSerifFont()
   lf.lfOutPrecision = 1;
   lf.lfClipPrecision = 2;
   lf.lfQuality = 1;
-  strcpy((char *)&lf.lfPitchAndFamily, "\"MS Sans Serif");
+  lf.lfPitchAndFamily = VARIABLE_PITCH | FF_SWISS;
+  strcpy(lf.lfFaceName, "MS Sans Serif");
   return CreateFontIndirectA(&lf);
 }
 
