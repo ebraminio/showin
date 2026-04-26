@@ -67,7 +67,7 @@ struct WindowList
    used by the "Copy to clipboard" function (IDC_COPY). */
 int g_labelControlIds[] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
 int g_valueControlIds[] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
-CHAR pwszDriver[] = "DISPLAY";
+CHAR g_pwszDriver[] = "DISPLAY";
 int g_optCloseWindow = 0;
 HWND g_lastHoveredHwnd = nullptr;
 int g_bitmapHeight = 0;
@@ -75,22 +75,22 @@ int g_isDragging = 0;
 int g_optIncludeHidden = 0;
 int g_optToggleEnabled = 0;
 HGDIOBJ g_hFontBold = nullptr;
-HINSTANCE hInst = nullptr;
+HINSTANCE g_hInst = nullptr;
 HGDIOBJ g_h = nullptr;
 int g_optSetTopmost = 0;
 HGDIOBJ g_hFontNormal = nullptr;
 int g_optRedrawWindow = 0;
 HGDIOBJ g_hBgBrush = nullptr;
-HWND ghWnd = nullptr;
-RECT rc = {0, 0, 0, 0};
-POINT pt = {0, 0};
+HWND g_hWnd = nullptr;
+RECT g_rc = {0, 0, 0, 0};
+POINT g_pt = {0, 0};
 int g_bitmapWidth = 0;
-HGDIOBJ hPal = nullptr;
-HDC hdc = nullptr;
+HGDIOBJ g_hPal = nullptr;
+HDC g_hdc = nullptr;
 int g_optSetNoActivate = 0;
 int g_optToggleVisible = 0;
 int g_showHighlight = 0;
-HGDIOBJ ho = nullptr;
+HGDIOBJ g_hBitmap = nullptr;
 WindowList g_windowList;
 bool g_darkMode = false;
 WNDPROC g_origGroupBoxProc = nullptr;
@@ -120,42 +120,42 @@ void DrawHighlightRect(RECT *rect)
 {
   if (!g_showHighlight)
     return;
-  HGDIOBJ h = SelectObject(hdc, g_h);
-  int rop2 = SetROP2(hdc, R2_XORPEN);
-  MoveToEx(hdc, rect->left - 1, rect->top - 1, nullptr);
-  LineTo(hdc, rect->right, rect->top - 1);
-  LineTo(hdc, rect->right, rect->bottom);
-  LineTo(hdc, rect->left - 1, rect->bottom);
-  LineTo(hdc, rect->left - 1, rect->top - 1);
-  MoveToEx(hdc, rect->left - 2, rect->top - 2, nullptr);
-  LineTo(hdc, rect->right + 1, rect->top - 2);
-  LineTo(hdc, rect->right + 1, rect->bottom + 1);
-  LineTo(hdc, rect->left - 2, rect->bottom + 1);
-  LineTo(hdc, rect->left - 2, rect->top - 2);
-  SetROP2(hdc, rop2);
-  SelectObject(hdc, h);
-  SetRect(&rc, rect->left, rect->top, rect->right, rect->bottom);
+  HGDIOBJ h = SelectObject(g_hdc, g_h);
+  int rop2 = SetROP2(g_hdc, R2_XORPEN);
+  MoveToEx(g_hdc, rect->left - 1, rect->top - 1, nullptr);
+  LineTo(g_hdc, rect->right, rect->top - 1);
+  LineTo(g_hdc, rect->right, rect->bottom);
+  LineTo(g_hdc, rect->left - 1, rect->bottom);
+  LineTo(g_hdc, rect->left - 1, rect->top - 1);
+  MoveToEx(g_hdc, rect->left - 2, rect->top - 2, nullptr);
+  LineTo(g_hdc, rect->right + 1, rect->top - 2);
+  LineTo(g_hdc, rect->right + 1, rect->bottom + 1);
+  LineTo(g_hdc, rect->left - 2, rect->bottom + 1);
+  LineTo(g_hdc, rect->left - 2, rect->top - 2);
+  SetROP2(g_hdc, rop2);
+  SelectObject(g_hdc, h);
+  SetRect(&g_rc, rect->left, rect->top, rect->right, rect->bottom);
 }
 
 BOOL EraseHighlightRect()
 {
-  if (!IsRectEmpty(&rc))
-    DrawHighlightRect(&rc);
-  return SetRect(&rc, 0, 0, 0, 0);
+  if (!IsRectEmpty(&g_rc))
+    DrawHighlightRect(&g_rc);
+  return SetRect(&g_rc, 0, 0, 0, 0);
 }
 
 BOOL CleanupResources()
 {
-  DeleteObject(ho);
-  ho = nullptr;
-  DeleteObject(hPal);
-  hPal = nullptr;
+  DeleteObject(g_hBitmap);
+  g_hBitmap = nullptr;
+  DeleteObject(g_hPal);
+  g_hPal = nullptr;
   DeleteObject(g_hFontNormal);
   DeleteObject(g_hFontBold);
   EraseHighlightRect();
   DeleteObject(g_hBgBrush);
   DeleteObject(g_h);
-  return DeleteDC(hdc);
+  return DeleteDC(g_hdc);
 }
 
 HWND HitTestWindowList()
@@ -165,7 +165,7 @@ HWND HitTestWindowList()
   for (auto &e : g_windowList)
   {
     GetWindowRect(e.hwnd, &Rect);
-    if (PtInRect(&Rect, pt))
+    if (PtInRect(&Rect, g_pt))
       return e.hwnd;
   }
   return nullptr;
@@ -193,40 +193,40 @@ void RebuildWindowList()
 
 static void UpdateHover(HWND hWnd, LPARAM lParam)
 {
-  pt.x = (__int16)lParam;
-  pt.y = (short)HIWORD(lParam);
-  ClientToScreen(hWnd, &pt);
+  g_pt.x = (__int16)lParam;
+  g_pt.y = (short)HIWORD(lParam);
+  ClientToScreen(hWnd, &g_pt);
   HWND hDlg = GetParent(hWnd);
   CHAR String[256];
-  wsprintfA(String, "%4hd", pt.x);
+  wsprintfA(String, "%4hd", g_pt.x);
   SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
-  wsprintfA(String, "%4hd", pt.y);
+  wsprintfA(String, "%4hd", g_pt.y);
   SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
   HWND hitHwnd = HitTestWindowList();
-  ghWnd = hitHwnd;
+  g_hWnd = hitHwnd;
   if (hitHwnd && hitHwnd != g_lastHoveredHwnd)
   {
     g_lastHoveredHwnd = hitHwnd;
     SendMessageA(hitHwnd, WM_GETTEXT, 256, (LPARAM)String);
     SetDlgItemTextA(hDlg, IDC_TITLE, String);
-    GetClassNameA(ghWnd, String, 256);
+    GetClassNameA(g_hWnd, String, 256);
     SetDlgItemTextA(hDlg, IDC_CLASSNAME, String);
-    wsprintfA(String, "%-6d (0x%08X)", ghWnd, ghWnd);
+    wsprintfA(String, "%-6d (0x%08X)", g_hWnd, g_hWnd);
     SetDlgItemTextA(hDlg, IDC_HANDLE, String);
-    HWND Parent = GetParent(ghWnd);
+    HWND Parent = GetParent(g_hWnd);
     wsprintfA(String, "%-6d (0x%08X)", Parent, Parent);
     SetDlgItemTextA(hDlg, IDC_PARENT, String);
-    HWND Window = GetWindow(ghWnd, GW_OWNER);
+    HWND Window = GetWindow(g_hWnd, GW_OWNER);
     wsprintfA(String, "%-6d (0x%08X)", Window, Window);
     SetDlgItemTextA(hDlg, IDC_OWNER, String);
-    LONG WindowLongA = GetWindowLongA(ghWnd, GWL_ID);
+    LONG WindowLongA = GetWindowLongA(g_hWnd, GWL_ID);
     wsprintfA(String, "%-6d (0x%08X)", WindowLongA, WindowLongA);
     SetDlgItemTextA(hDlg, IDC_WINDOWID, String);
-    LONG_PTR wndProc = GetWindowLongPtrA(ghWnd, GWLP_WNDPROC);
+    LONG_PTR wndProc = GetWindowLongPtrA(g_hWnd, GWLP_WNDPROC);
     wsprintfA(String, "0x%IX", (SIZE_T)wndProc);
     SetDlgItemTextA(hDlg, IDC_WNDPROC, String);
     RECT Rect;
-    GetWindowRect(ghWnd, &Rect);
+    GetWindowRect(g_hWnd, &Rect);
     RECT rcDst;
     CopyRect(&rcDst, &Rect);
     if (Parent)
@@ -269,9 +269,9 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
       return 0;
     RebuildWindowList();
     g_lastHoveredHwnd = 0;
-    SetRect(&rc, 0, 0, 0, 0);
+    SetRect(&g_rc, 0, 0, 0, 0);
     SetCapture(hWnd);
-    HCURSOR CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
+    HCURSOR CursorA = LoadCursorA(g_hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
     g_isDragging = 1;
     UpdateHover(hWnd, lParam);
@@ -293,44 +293,44 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
     if (g_isDragging)
     {
       HWND dlgWnd = GetParent(hWnd);
-      if (ghWnd != dlgWnd && GetParent(ghWnd) != dlgWnd)
+      if (g_hWnd != dlgWnd && GetParent(g_hWnd) != dlgWnd)
       {
         if (g_optToggleEnabled)
         {
           EraseHighlightRect();
-          BOOL isEnabled = IsWindowEnabled(ghWnd);
-          EnableWindow(ghWnd, !isEnabled);
+          BOOL isEnabled = IsWindowEnabled(g_hWnd);
+          EnableWindow(g_hWnd, !isEnabled);
         }
         if (g_optToggleVisible)
         {
           EraseHighlightRect();
           /* Toggle visibility: SW_SHOW(5) if hidden, SW_HIDE(0) if visible */
-          int showCmd = -IsWindowVisible(ghWnd);
+          int showCmd = -IsWindowVisible(g_hWnd);
           showCmd &= ~4; /* clear bit 2 of low byte */
-          ShowWindow(ghWnd, showCmd + 5);
+          ShowWindow(g_hWnd, showCmd + 5);
         }
         if (g_optRedrawWindow)
         {
           EraseHighlightRect();
-          InvalidateRect(ghWnd, nullptr, TRUE);
-          UpdateWindow(ghWnd);
+          InvalidateRect(g_hWnd, nullptr, TRUE);
+          UpdateWindow(g_hWnd);
         }
         if (g_optSetNoActivate)
         {
           EraseHighlightRect();
-          SetWindowPos(ghWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-          UpdateWindow(ghWnd);
+          SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+          UpdateWindow(g_hWnd);
         }
         if (g_optSetTopmost)
         {
           EraseHighlightRect();
-          SetWindowPos(ghWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-          UpdateWindow(ghWnd);
+          SetWindowPos(g_hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+          UpdateWindow(g_hWnd);
         }
         if (g_optCloseWindow)
         {
           EraseHighlightRect();
-          PostMessageA(ghWnd, WM_CLOSE, 0, 0);
+          PostMessageA(g_hWnd, WM_CLOSE, 0, 0);
         }
       }
     }
@@ -343,11 +343,11 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
 void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
 {
   HDC destDC = dis->hDC;
-  if (ho)
+  if (g_hBitmap)
   {
     HDC CompatibleDC = CreateCompatibleDC(destDC);
-    SelectObject(CompatibleDC, ho);
-    SelectPalette(destDC, (HPALETTE)hPal, 0);
+    SelectObject(CompatibleDC, g_hBitmap);
+    SelectPalette(destDC, (HPALETTE)g_hPal, 0);
     RealizePalette(destDC);
     StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
                dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
@@ -356,12 +356,12 @@ void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   }
 }
 
-int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
+int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
 {
-  *hdc = nullptr;
+  *g_hdc = nullptr;
   *outPalette = nullptr;
-  HANDLE ImageA = LoadImageA(hInst, MAKEINTRESOURCEA((WORD)(UINT_PTR)h), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
-  *hdc = ImageA;
+  HANDLE ImageA = LoadImageA(g_hInst, MAKEINTRESOURCEA((WORD)(UINT_PTR)h), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+  *g_hdc = ImageA;
   if (!ImageA)
     return 0;
   BITMAP pv;
@@ -375,7 +375,7 @@ int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *outPalette, DWORD *out
   else
   {
     HDC hdca = CreateCompatibleDC(nullptr);
-    HGDIOBJ ha = SelectObject(hdca, *hdc);
+    HGDIOBJ ha = SelectObject(hdca, *g_hdc);
     RGBQUAD prgbq[256];
     GetDIBColorTable(hdca, 0, 0x100u, prgbq);
     struct
@@ -439,7 +439,7 @@ HFONT CreateSansSerifFont()
 int InitResources()
 {
   g_windowList.count = 0;
-  hdc = CreateDCA(pwszDriver, nullptr, nullptr, nullptr);
+  g_hdc = CreateDCA(g_pwszDriver, nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
   g_h = CreatePen(PS_DOT, 0, SysColor);
   DWORD btnFaceColor = GetSysColor(COLOR_BTNFACE);
@@ -448,7 +448,7 @@ int InitResources()
   g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
   g_pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
   g_pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(LoadLibraryA("dwmapi.dll"), "DwmSetWindowAttribute");
-  return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
+  return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&g_hBitmap, (HPALETTE *)&g_hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
 BOOL PositionWindowBottomRight(HWND hWnd)
@@ -481,9 +481,9 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
   {
     if (msg == WM_ERASEBKGND)
     {
-      RECT rc;
-      GetClientRect(hwnd, &rc);
-      FillRect((HDC)wParam, &rc, (HBRUSH)g_hBgBrush);
+      RECT g_rc;
+      GetClientRect(hwnd, &g_rc);
+      FillRect((HDC)wParam, &g_rc, (HBRUSH)g_hBgBrush);
       return 1;
     }
     if (msg == WM_PAINT)
@@ -491,33 +491,33 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
       CHAR text[256];
       GetWindowTextA(hwnd, text, sizeof(text));
       PAINTSTRUCT ps;
-      HDC hdc = BeginPaint(hwnd, &ps);
-      RECT rc;
-      GetClientRect(hwnd, &rc);
-      FillRect(hdc, &rc, (HBRUSH)g_hBgBrush);
+      HDC g_hdc = BeginPaint(hwnd, &ps);
+      RECT g_rc;
+      GetClientRect(hwnd, &g_rc);
+      FillRect(g_hdc, &g_rc, (HBRUSH)g_hBgBrush);
       HFONT hFont = (HFONT)SendMessageA(hwnd, WM_GETFONT, 0, 0);
-      HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+      HFONT hOldFont = (HFONT)SelectObject(g_hdc, hFont);
       SIZE sz;
-      GetTextExtentPoint32A(hdc, "A", 1, &sz);
+      GetTextExtentPoint32A(g_hdc, "A", 1, &sz);
       /* Draw a simple gray border; top edge sits at mid-height of the caption */
       HPEN hPen = CreatePen(PS_SOLID, 1, RGB(80, 80, 80));
-      HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-      HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
-      Rectangle(hdc, rc.left, rc.top + sz.cy / 2, rc.right - 1, rc.bottom - 1);
-      SelectObject(hdc, hOldBrush);
-      SelectObject(hdc, hOldPen);
+      HPEN hOldPen = (HPEN)SelectObject(g_hdc, hPen);
+      HBRUSH hOldBrush = (HBRUSH)SelectObject(g_hdc, GetStockObject(NULL_BRUSH));
+      Rectangle(g_hdc, g_rc.left, g_rc.top + sz.cy / 2, g_rc.right - 1, g_rc.bottom - 1);
+      SelectObject(g_hdc, hOldBrush);
+      SelectObject(g_hdc, hOldPen);
       DeleteObject(hPen);
       /* Draw caption text over the top border line */
       if (text[0])
       {
-        SetTextColor(hdc, RGB(242, 242, 242));
-        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(g_hdc, RGB(242, 242, 242));
+        SetBkMode(g_hdc, TRANSPARENT);
         UINT dtFlags = DT_TOP | DT_SINGLELINE;
         dtFlags |= (GetWindowLongA(hwnd, GWL_STYLE) & BS_CENTER) ? DT_CENTER : DT_LEFT;
-        RECT textRc = {rc.left + 8, rc.top, rc.right - 8, rc.top + sz.cy};
-        DrawTextA(hdc, text, -1, &textRc, dtFlags);
+        RECT textRc = {g_rc.left + 8, g_rc.top, g_rc.right - 8, g_rc.top + sz.cy};
+        DrawTextA(g_hdc, text, -1, &textRc, dtFlags);
       }
-      SelectObject(hdc, hOldFont);
+      SelectObject(g_hdc, hOldFont);
       EndPaint(hwnd, &ps);
       return 0;
     }
@@ -596,7 +596,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     PositionWindowBottomRight(hDlg);
     ApplyDarkMode(hDlg);
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
-    HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
+    HICON IconA = LoadIconA(g_hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     LONG_PTR prevWndProc = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, prevWndProc);
@@ -612,7 +612,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
     g_showHighlight = 1;
     g_lastHoveredHwnd = 0;
-    ghWnd = nullptr;
+    g_hWnd = nullptr;
     g_isDragging = 0;
     break;
   }
@@ -736,7 +736,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
   TryEnableDpiAwareness();
-  hInst = hInstance;
+  g_hInst = hInstance;
   DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
   return 0;
 }
