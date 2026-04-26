@@ -7,32 +7,17 @@ struct WindowEntry
   int area;
 };
 
+static const int kWindowListCapacity = 1024;
+
 struct WindowList
 {
-  WindowEntry *buf;
-  int capacity;
+  WindowEntry buf[kWindowListCapacity];
   int count;
-
-  void Init(int cap)
-  {
-    buf = (WindowEntry *)malloc(cap * sizeof(WindowEntry));
-    capacity = cap;
-    count = 0;
-  }
-
-  void Destroy()
-  {
-    free(buf);
-  }
 
   void Push(HWND hwnd, int area)
   {
-    if (count >= capacity)
-    {
-      int newcap = capacity + capacity / 2;
-      capacity = newcap;
-      buf = (WindowEntry *)realloc(buf, newcap * sizeof(WindowEntry));
-    }
+    if (count >= kWindowListCapacity)
+      return;
     buf[count].hwnd = hwnd;
     buf[count].area = area;
     count++;
@@ -106,7 +91,7 @@ int g_optSetNoActivate = 0;
 int g_optToggleVisible = 0;
 int g_showHighlight = 0;
 HGDIOBJ ho = nullptr;
-WindowList *g_windowList = nullptr;
+WindowList g_windowList;
 bool g_darkMode = false;
 WNDPROC g_origGroupBoxProc = nullptr;
 
@@ -163,12 +148,6 @@ BOOL CleanupResources()
   hPal = nullptr;
   DeleteObject(g_hFontNormal);
   DeleteObject(g_hFontBold);
-  if (g_windowList)
-  {
-    g_windowList->Destroy();
-    free(g_windowList);
-    g_windowList = nullptr;
-  }
   EraseHighlightRect();
   DeleteObject(g_hBgBrush);
   DeleteObject(g_h);
@@ -179,7 +158,7 @@ HWND HitTestWindowList()
 {
   struct tagRECT Rect;
 
-  for (auto &e : *g_windowList)
+  for (auto &e : g_windowList)
   {
     GetWindowRect(e.hwnd, &Rect);
     if (PtInRect(&Rect, pt))
@@ -195,7 +174,7 @@ BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM a2)
     struct tagRECT Rect;
     GetWindowRect(hWnd, &Rect);
     if (!IsRectEmpty(&Rect))
-      g_windowList->Push(hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
+      g_windowList.Push(hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
     EnumChildWindows(hWnd, EnumFunc, 0);
   }
   return 1;
@@ -203,9 +182,9 @@ BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM a2)
 
 void RebuildWindowList()
 {
-  g_windowList->Clear();
+  g_windowList.Clear();
   EnumWindows(EnumFunc, 0);
-  g_windowList->Sort();
+  g_windowList.Sort();
 }
 
 static void UpdateHover(HWND hWnd, LPARAM lParam)
@@ -457,8 +436,7 @@ HFONT CreateSansSerifFont()
 
 int InitResources()
 {
-  g_windowList = (WindowList *)malloc(sizeof(WindowList));
-  g_windowList->Init(1000);
+  g_windowList.count = 0;
   hdc = CreateDCA(pwszDriver, nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
   g_h = CreatePen(PS_DOT, 0, SysColor);
