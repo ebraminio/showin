@@ -63,11 +63,6 @@ struct WindowList
   }
 };
 
-/* Label static controls (left column) and their paired value controls (right column)
-   used by the "Copy to clipboard" function (IDC_COPY). */
-int g_labelControlIds[] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
-int g_valueControlIds[] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
-CHAR g_pwszDriver[] = "DISPLAY";
 int g_optCloseWindow = 0;
 HWND g_lastHoveredHwnd = nullptr;
 int g_bitmapHeight = 0;
@@ -83,7 +78,6 @@ int g_optRedrawWindow = 0;
 HGDIOBJ g_hBgBrush = nullptr;
 HWND g_hWnd = nullptr;
 RECT g_rc = {0, 0, 0, 0};
-POINT g_pt = {0, 0};
 int g_bitmapWidth = 0;
 HGDIOBJ g_hPal = nullptr;
 HDC g_hdc = nullptr;
@@ -158,14 +152,14 @@ BOOL CleanupResources()
   return DeleteDC(g_hdc);
 }
 
-HWND HitTestWindowList()
+HWND HitTestWindowList(POINT pt)
 {
   struct tagRECT Rect;
 
   for (auto &e : g_windowList)
   {
     GetWindowRect(e.hwnd, &Rect);
-    if (PtInRect(&Rect, g_pt))
+    if (PtInRect(&Rect, pt))
       return e.hwnd;
   }
   return nullptr;
@@ -193,16 +187,17 @@ void RebuildWindowList()
 
 static void UpdateHover(HWND hWnd, LPARAM lParam)
 {
-  g_pt.x = (__int16)lParam;
-  g_pt.y = (short)HIWORD(lParam);
-  ClientToScreen(hWnd, &g_pt);
+  POINT pt;
+  pt.x = (__int16)lParam;
+  pt.y = (short)HIWORD(lParam);
+  ClientToScreen(hWnd, &pt);
   HWND hDlg = GetParent(hWnd);
   CHAR String[256];
-  wsprintfA(String, "%4hd", g_pt.x);
+  wsprintfA(String, "%4hd", pt.x);
   SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
-  wsprintfA(String, "%4hd", g_pt.y);
+  wsprintfA(String, "%4hd", pt.y);
   SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
-  HWND hitHwnd = HitTestWindowList();
+  HWND hitHwnd = HitTestWindowList(pt);
   g_hWnd = hitHwnd;
   if (hitHwnd && hitHwnd != g_lastHoveredHwnd)
   {
@@ -439,7 +434,7 @@ HFONT CreateSansSerifFont()
 int InitResources()
 {
   g_windowList.count = 0;
-  g_hdc = CreateDCA(g_pwszDriver, nullptr, nullptr, nullptr);
+  g_hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
   g_h = CreatePen(PS_DOT, 0, SysColor);
   DWORD btnFaceColor = GetSysColor(COLOR_BTNFACE);
@@ -639,13 +634,15 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       break;
     case IDC_COPY:
     {
+      static const int labelIds[] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
+      static const int valueIds[] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
       CHAR String[256];
       int totalSize = 0;
       for (unsigned i = 0; i < 9; ++i)
       {
-        GetDlgItemTextA(hDlg, g_labelControlIds[i], String, 256);
+        GetDlgItemTextA(hDlg, labelIds[i], String, 256);
         unsigned labelLen = strlen(String) + 1;
-        GetDlgItemTextA(hDlg, g_valueControlIds[i], String, 256);
+        GetDlgItemTextA(hDlg, valueIds[i], String, 256);
         totalSize += labelLen + 1 + strlen(String) + 2;
       }
       OpenClipboard(hDlg);
@@ -655,7 +652,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       char *pWrite = (char *)GlobalLock(hClipMem);
       do
       {
-        GetDlgItemTextA(hDlg, g_labelControlIds[nResulta], String, 256);
+        GetDlgItemTextA(hDlg, labelIds[nResulta], String, 256);
         unsigned labelLen = strlen(String) + 1;
         memcpy(pWrite, String, 4 * ((labelLen - 1) >> 2));
         char *pWriteAligned = &pWrite[4 * ((labelLen - 1) >> 2)];
@@ -663,7 +660,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         memcpy(pWriteAligned, &String[4 * ((labelLen - 1) >> 2)], ((BYTE)labelLen - 1) & 3);
         *pAfterLabel++ = ':';
         *pAfterLabel++ = '\t';
-        GetDlgItemTextA(hDlg, g_valueControlIds[nResulta], String, 256);
+        GetDlgItemTextA(hDlg, valueIds[nResulta], String, 256);
         unsigned valueLen = strlen(String) + 1;
         memcpy(pAfterLabel, String, 4 * ((valueLen - 1) >> 2));
         char *pValueAligned = &pAfterLabel[4 * ((valueLen - 1) >> 2)];
