@@ -94,6 +94,10 @@ HGDIOBJ ho = nullptr;
 WindowList g_windowList;
 bool g_darkMode = false;
 WNDPROC g_origGroupBoxProc = nullptr;
+typedef HRESULT(WINAPI *PFN_SetWindowTheme)(HWND, LPCWSTR, LPCWSTR);
+typedef HRESULT(WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+PFN_SetWindowTheme g_pfnSetWindowTheme = nullptr;
+PFN_DwmSetWindowAttribute g_pfnDwmSetWindowAttribute = nullptr;
 
 static void TryEnableDpiAwareness()
 {
@@ -442,6 +446,8 @@ int InitResources()
   g_hBgBrush = CreateSolidBrush(btnFaceColor);
   g_hFontNormal = (HGDIOBJ)CreateCourierFont();
   g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
+  g_pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
+  g_pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(LoadLibraryA("dwmapi.dll"), "DwmSetWindowAttribute");
   return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&ho, (HPALETTE *)&hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
@@ -521,8 +527,6 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
 static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
 {
-  typedef HRESULT(WINAPI * PFN)(HWND, LPCWSTR, LPCWSTR);
-  static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
   CHAR cls[64];
   GetClassNameA(hwnd, cls, sizeof(cls));
   if (lstrcmpiA(cls, "Button") == 0)
@@ -539,8 +543,8 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
         SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
       }
     }
-    else if (pfn)
-      pfn(hwnd, dark ? L"DarkMode_Explorer" : L"", nullptr);
+    else if (g_pfnSetWindowTheme)
+      g_pfnSetWindowTheme(hwnd, dark ? L"DarkMode_Explorer" : L"", nullptr);
   }
   return TRUE;
 }
@@ -548,17 +552,13 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
 static void ApplyDarkMode(HWND hDlg)
 {
   g_darkMode = IsDarkModeActive();
-  {
-    typedef HRESULT(WINAPI * PFN)(HWND, DWORD, LPCVOID, DWORD);
-    static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("dwmapi.dll"), "DwmSetWindowAttribute");
-    if (pfn)
-    {
-      BOOL dark = g_darkMode ? TRUE : FALSE;
-      pfn(hDlg, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
-    }
-  }
   EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)g_darkMode);
   DeleteObject(g_hBgBrush);
+  if (g_pfnDwmSetWindowAttribute)
+  {
+    BOOL dark = g_darkMode ? TRUE : FALSE;
+    g_pfnDwmSetWindowAttribute(hDlg, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
+  }
   g_hBgBrush = CreateSolidBrush(g_darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
   InvalidateRect(hDlg, nullptr, TRUE);
 }
