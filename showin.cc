@@ -112,25 +112,25 @@ static UINT GetSystemDpi()
   return pfn ? pfn() : 96;
 }
 
-void DrawHighlightRect(RECT *a1)
+void DrawHighlightRect(RECT *rect)
 {
   if (!g_showHighlight)
     return;
   HGDIOBJ h = SelectObject(hdc, g_h);
   int rop2 = SetROP2(hdc, R2_XORPEN);
-  MoveToEx(hdc, a1->left - 1, a1->top - 1, nullptr);
-  LineTo(hdc, a1->right, a1->top - 1);
-  LineTo(hdc, a1->right, a1->bottom);
-  LineTo(hdc, a1->left - 1, a1->bottom);
-  LineTo(hdc, a1->left - 1, a1->top - 1);
-  MoveToEx(hdc, a1->left - 2, a1->top - 2, nullptr);
-  LineTo(hdc, a1->right + 1, a1->top - 2);
-  LineTo(hdc, a1->right + 1, a1->bottom + 1);
-  LineTo(hdc, a1->left - 2, a1->bottom + 1);
-  LineTo(hdc, a1->left - 2, a1->top - 2);
+  MoveToEx(hdc, rect->left - 1, rect->top - 1, nullptr);
+  LineTo(hdc, rect->right, rect->top - 1);
+  LineTo(hdc, rect->right, rect->bottom);
+  LineTo(hdc, rect->left - 1, rect->bottom);
+  LineTo(hdc, rect->left - 1, rect->top - 1);
+  MoveToEx(hdc, rect->left - 2, rect->top - 2, nullptr);
+  LineTo(hdc, rect->right + 1, rect->top - 2);
+  LineTo(hdc, rect->right + 1, rect->bottom + 1);
+  LineTo(hdc, rect->left - 2, rect->bottom + 1);
+  LineTo(hdc, rect->left - 2, rect->top - 2);
   SetROP2(hdc, rop2);
   SelectObject(hdc, h);
-  SetRect(&rc, a1->left, a1->top, a1->right, a1->bottom);
+  SetRect(&rc, rect->left, rect->top, rect->right, rect->bottom);
 }
 
 BOOL EraseHighlightRect()
@@ -167,7 +167,7 @@ HWND HitTestWindowList()
   return nullptr;
 }
 
-BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM a2)
+BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
 {
   if (g_optIncludeHidden || IsWindowVisible(hWnd))
   {
@@ -336,26 +336,26 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
   return CallWindowProcA(origProc, hWnd, Msg, wParam, lParam);
 }
 
-void DrawBitmapPreview(HWND hwndDlg, int a2, DRAWITEMSTRUCT *a3)
+void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
 {
-  HDC destDC = a3->hDC;
+  HDC destDC = dis->hDC;
   if (ho)
   {
     HDC CompatibleDC = CreateCompatibleDC(destDC);
     SelectObject(CompatibleDC, ho);
     SelectPalette(destDC, (HPALETTE)hPal, 0);
     RealizePalette(destDC);
-    StretchBlt(destDC, a3->rcItem.left, a3->rcItem.top,
-               a3->rcItem.right - a3->rcItem.left, a3->rcItem.bottom - a3->rcItem.top,
+    StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
+               dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
                CompatibleDC, 0, 0, g_bitmapWidth, g_bitmapHeight, SRCCOPY);
     DeleteDC(CompatibleDC);
   }
 }
 
-int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *a5)
+int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
 {
   *hdc = nullptr;
-  *a3 = nullptr;
+  *outPalette = nullptr;
   HANDLE ImageA = LoadImageA(hInst, MAKEINTRESOURCEA((WORD)(UINT_PTR)h), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
   *hdc = ImageA;
   if (!ImageA)
@@ -365,7 +365,7 @@ int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *
   if (pv.bmBitsPixel * pv.bmPlanes > 8)
   {
     HDC DC = GetDC(nullptr);
-    *a3 = CreateHalftonePalette(DC);
+    *outPalette = CreateHalftonePalette(DC);
     ReleaseDC(nullptr, DC);
   }
   else
@@ -389,12 +389,12 @@ int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *
       logPal->palPalEntry[i].peBlue = prgbq[i].rgbBlue;
       logPal->palPalEntry[i].peFlags = 0;
     }
-    *a3 = CreatePalette(logPal);
+    *outPalette = CreatePalette(logPal);
     SelectObject(hdca, ha);
     DeleteDC(hdca);
   }
-  *a4 = pv.bmWidth;
-  *a5 = pv.bmHeight;
+  *outWidth = pv.bmWidth;
+  *outHeight = pv.bmHeight;
   return 1;
 }
 
