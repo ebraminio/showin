@@ -4,7 +4,7 @@ target("showin", function()
     set_kind("binary")
     add_files("showin.cc", "showin.rc")
     add_syslinks("user32", "gdi32", "advapi32")
-    set_exceptions("no")
+    set_exceptions("none")
     if is_plat("mingw") then
         add_ldflags("-mwindows", {force = true})
         add_cxxflags("-fno-rtti", "-fno-threadsafe-statics", {force = true})
