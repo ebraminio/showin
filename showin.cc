@@ -372,26 +372,24 @@ int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *hdc, HPALETTE *a3, DWORD *a4, DWORD *
   {
     HDC hdca = CreateCompatibleDC(nullptr);
     HGDIOBJ ha = SelectObject(hdca, *hdc);
-    int colorCount = 256;
     RGBQUAD prgbq[256];
     GetDIBColorTable(hdca, 0, 0x100u, prgbq);
-    LOGPALETTE *logPal = (LOGPALETTE *)malloc(sizeof(LOGPALETTE) + 256 * sizeof(PALETTEENTRY));
-    BYTE *p_rgbGreen = &prgbq[0].rgbGreen;
+    struct
+    {
+      LOGPALETTE hdr;
+      PALETTEENTRY extra[255];
+    } logPalBuf;
+    LOGPALETTE *logPal = &logPalBuf.hdr;
     logPal->palVersion = 0x300 /* LOGPALETTE version */;
     logPal->palNumEntries = 256;
-    BYTE *p_peGreen = &logPal->palPalEntry[0].peGreen;
-    do
+    for (unsigned i = 0; i < 256; i++)
     {
-      *(p_peGreen - 1) = p_rgbGreen[1];
-      *p_peGreen = *p_rgbGreen;
-      p_peGreen[1] = *(p_rgbGreen - 1);
-      p_peGreen[2] = 0;
-      p_rgbGreen += 4;
-      p_peGreen += 4;
-      --colorCount;
-    } while (colorCount);
+      logPal->palPalEntry[i].peRed = prgbq[i].rgbRed;
+      logPal->palPalEntry[i].peGreen = prgbq[i].rgbGreen;
+      logPal->palPalEntry[i].peBlue = prgbq[i].rgbBlue;
+      logPal->palPalEntry[i].peFlags = 0;
+    }
     *a3 = CreatePalette(logPal);
-    free(logPal);
     SelectObject(hdca, ha);
     DeleteDC(hdca);
   }
@@ -462,8 +460,8 @@ static bool IsDarkModeActive()
   DWORD size = sizeof(value);
   HKEY key;
   if (RegOpenKeyExA(HKEY_CURRENT_USER,
-        "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-        0, KEY_READ, &key) == ERROR_SUCCESS)
+                    "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                    0, KEY_READ, &key) == ERROR_SUCCESS)
   {
     RegQueryValueExA(key, "AppsUseLightTheme", nullptr, nullptr, (LPBYTE)&value, &size);
     RegCloseKey(key);
@@ -523,7 +521,7 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
 static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
 {
-  typedef HRESULT(WINAPI *PFN)(HWND, LPCWSTR, LPCWSTR);
+  typedef HRESULT(WINAPI * PFN)(HWND, LPCWSTR, LPCWSTR);
   static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
   CHAR cls[64];
   GetClassNameA(hwnd, cls, sizeof(cls));
@@ -551,7 +549,7 @@ static void ApplyDarkMode(HWND hDlg)
 {
   g_darkMode = IsDarkModeActive();
   {
-    typedef HRESULT(WINAPI *PFN)(HWND, DWORD, LPCVOID, DWORD);
+    typedef HRESULT(WINAPI * PFN)(HWND, DWORD, LPCVOID, DWORD);
     static PFN pfn = (PFN)GetProcAddress(LoadLibraryA("dwmapi.dll"), "DwmSetWindowAttribute");
     if (pfn)
     {
@@ -643,22 +641,22 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       CHAR String[256];
       int totalSize = 0;
-      for (unsigned int i = 0; i < 9; ++i)
+      for (unsigned i = 0; i < 9; ++i)
       {
         GetDlgItemTextA(hDlg, g_labelControlIds[i], String, 256);
-        unsigned int labelLen = strlen(String) + 1;
+        unsigned labelLen = strlen(String) + 1;
         GetDlgItemTextA(hDlg, g_valueControlIds[i], String, 256);
         totalSize += labelLen + 1 + strlen(String) + 2;
       }
       OpenClipboard(hDlg);
       EmptyClipboard();
       HGLOBAL hClipMem = GlobalAlloc(GHND, totalSize + 1);
-      unsigned int nResulta = 0;
+      unsigned nResulta = 0;
       char *pWrite = (char *)GlobalLock(hClipMem);
       do
       {
         GetDlgItemTextA(hDlg, g_labelControlIds[nResulta], String, 256);
-        unsigned int labelLen = strlen(String) + 1;
+        unsigned labelLen = strlen(String) + 1;
         memcpy(pWrite, String, 4 * ((labelLen - 1) >> 2));
         char *pWriteAligned = &pWrite[4 * ((labelLen - 1) >> 2)];
         char *pAfterLabel = &pWrite[labelLen - 1];
@@ -666,7 +664,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         *pAfterLabel++ = ':';
         *pAfterLabel++ = '\t';
         GetDlgItemTextA(hDlg, g_valueControlIds[nResulta], String, 256);
-        unsigned int valueLen = strlen(String) + 1;
+        unsigned valueLen = strlen(String) + 1;
         memcpy(pAfterLabel, String, 4 * ((valueLen - 1) >> 2));
         char *pValueAligned = &pAfterLabel[4 * ((valueLen - 1) >> 2)];
         ++nResulta;
