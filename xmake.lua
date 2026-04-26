@@ -4,8 +4,12 @@ target("showin", function()
     set_kind("binary")
     add_files("showin.cc", "showin.rc")
     add_syslinks("user32", "gdi32", "advapi32")
+    set_exceptions("no")
     if is_plat("mingw") then
         add_ldflags("-mwindows", {force = true})
-        add_cxxflags("-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", {force = true})
+        add_cxxflags("-fno-rtti", "-fno-threadsafe-statics", {force = true})
+    elseif is_plat("windows") then
+        add_ldflags("/SUBSYSTEM:WINDOWS", {force = true})
+        add_cxxflags("/GR-", "/Zc:threadSafeInit-", {force = true})
     end
 end)
