@@ -110,7 +110,7 @@ static UINT GetSystemDpi()
   return pfn ? pfn() : 96;
 }
 
-void DrawHighlightRect(RECT *rect)
+static void DrawHighlightRect(RECT *rect)
 {
   if (!g_showHighlight)
     return;
@@ -131,14 +131,14 @@ void DrawHighlightRect(RECT *rect)
   SetRect(&g_rc, rect->left, rect->top, rect->right, rect->bottom);
 }
 
-BOOL EraseHighlightRect()
+static BOOL EraseHighlightRect()
 {
   if (!IsRectEmpty(&g_rc))
     DrawHighlightRect(&g_rc);
   return SetRect(&g_rc, 0, 0, 0, 0);
 }
 
-BOOL CleanupResources()
+static BOOL CleanupResources()
 {
   DeleteObject(g_hBitmap);
   g_hBitmap = nullptr;
@@ -152,7 +152,7 @@ BOOL CleanupResources()
   return DeleteDC(g_hdc);
 }
 
-HWND HitTestWindowList(POINT pt)
+static HWND HitTestWindowList(POINT pt)
 {
   struct tagRECT Rect;
 
@@ -178,7 +178,7 @@ BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
   return 1;
 }
 
-void RebuildWindowList()
+static void RebuildWindowList()
 {
   g_windowList.Clear();
   EnumWindows(EnumFunc, 0);
@@ -335,7 +335,7 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
   return CallWindowProcA(origProc, hWnd, Msg, wParam, lParam);
 }
 
-void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
+static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
 {
   HDC destDC = dis->hDC;
   if (g_hBitmap)
@@ -351,7 +351,7 @@ void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   }
 }
 
-int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
+static int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
 {
   *g_hdc = nullptr;
   *outPalette = nullptr;
@@ -397,7 +397,7 @@ int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *o
   return 1;
 }
 
-HFONT CreateCourierFont()
+static HFONT CreateCourierFont()
 {
   LOGFONTA lf = {};
   lf.lfItalic = 0;
@@ -414,7 +414,7 @@ HFONT CreateCourierFont()
   return CreateFontIndirectA(&lf);
 }
 
-HFONT CreateSansSerifFont()
+static HFONT CreateSansSerifFont()
 {
   LOGFONTA lf = {};
   lf.lfItalic = 0;
@@ -431,7 +431,7 @@ HFONT CreateSansSerifFont()
   return CreateFontIndirectA(&lf);
 }
 
-int InitResources()
+static int InitResources()
 {
   g_windowList.count = 0;
   g_hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
@@ -446,7 +446,7 @@ int InitResources()
   return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&g_hBitmap, (HPALETTE *)&g_hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
-BOOL PositionWindowBottomRight(HWND hWnd)
+static BOOL PositionWindowBottomRight(HWND hWnd)
 {
   RECT pvParam;
   struct tagRECT Rect;
@@ -558,7 +558,7 @@ static void ApplyDarkMode(HWND hDlg)
   InvalidateRect(hDlg, nullptr, TRUE);
 }
 
-LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
+static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 {
   HWND DlgItem = GetDlgItem(hDlg, nIDDlgItem);
   return SendMessageA(DlgItem, WM_SETFONT, wParam, TRUE);
