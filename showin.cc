@@ -1,18 +1,16 @@
 #include <windows.h>
 #include "resource.h"
 
-struct WindowEntry
-{
-  HWND hwnd;
-  int area;
-};
-
 static const int kWindowListCapacity = 1024;
 
 struct WindowList
 {
-  WindowEntry buf[kWindowListCapacity];
-  int count;
+  struct Entry
+  {
+    HWND hwnd;
+    int area;
+  } buf[kWindowListCapacity];
+  unsigned count;
 
   void Push(HWND hwnd, int area)
   {
@@ -23,45 +21,33 @@ struct WindowList
     count++;
   }
 
-  WindowEntry &operator[](int idx)
-  {
-    static WindowEntry sentinel = {};
-    if (idx < 0 || idx >= count)
-      return sentinel;
-    return buf[idx];
-  }
-
-  struct Iterator
-  {
-    WindowList *list;
-    int idx;
-    WindowEntry &operator*() { return (*list)[idx]; }
-    Iterator &operator++()
-    {
-      idx++;
-      return *this;
-    }
-    bool operator!=(const Iterator &other) const { return idx != other.idx; }
-  };
-
-  Iterator begin() { return {this, 0}; }
-  Iterator end() { return {this, count}; }
-
   void Clear() { count = 0; }
 
   void Sort()
   {
     // Originally it was using a quick sort, let's use a bubble sort anyway
-    for (int i = 0; i < count - 1; i++)
-      for (int j = 0; j < count - 1 - i; j++)
+    for (unsigned i = 0; i < count - 1; ++i)
+      for (unsigned j = 0; j < count - 1 - i; ++j)
         if (buf[j].area > buf[j + 1].area)
         {
-          WindowEntry tmp = buf[j];
+          Entry tmp = buf[j];
           buf[j] = buf[j + 1];
           buf[j + 1] = tmp;
         }
   }
-};
+
+  HWND HitHwnd(POINT pt)
+  {
+    struct tagRECT rect;
+    for (unsigned i = 0; i < count; ++i)
+    {
+      GetWindowRect(buf[i].hwnd, &rect);
+      if (PtInRect(&rect, pt))
+        return buf[i].hwnd;
+    }
+    return nullptr;
+  }
+} g_windowList;
 
 int g_optCloseWindow = 0;
 HWND g_lastHoveredHwnd = nullptr;
@@ -85,7 +71,6 @@ int g_optSetNoActivate = 0;
 int g_optToggleVisible = 0;
 int g_showHighlight = 0;
 HGDIOBJ g_hBitmap = nullptr;
-WindowList g_windowList;
 bool g_darkMode = false;
 WNDPROC g_origGroupBoxProc = nullptr;
 typedef HRESULT(WINAPI *PFN_SetWindowTheme)(HWND, LPCWSTR, LPCWSTR);
@@ -152,27 +137,14 @@ static BOOL CleanupResources()
   return DeleteDC(g_hdc);
 }
 
-static HWND HitTestWindowList(POINT pt)
-{
-  struct tagRECT Rect;
-
-  for (auto &e : g_windowList)
-  {
-    GetWindowRect(e.hwnd, &Rect);
-    if (PtInRect(&Rect, pt))
-      return e.hwnd;
-  }
-  return nullptr;
-}
-
 BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
 {
   if (g_optIncludeHidden || IsWindowVisible(hWnd))
   {
-    struct tagRECT Rect;
-    GetWindowRect(hWnd, &Rect);
-    if (!IsRectEmpty(&Rect))
-      g_windowList.Push(hWnd, (Rect.right - Rect.left) * (Rect.bottom - Rect.top));
+    struct tagRECT rect;
+    GetWindowRect(hWnd, &rect);
+    if (!IsRectEmpty(&rect))
+      g_windowList.Push(hWnd, (rect.right - rect.left) * (rect.bottom - rect.top));
     EnumChildWindows(hWnd, EnumFunc, 0);
   }
   return 1;
@@ -192,34 +164,34 @@ static void UpdateHover(HWND hWnd, LPARAM lParam)
   pt.y = (short)HIWORD(lParam);
   ClientToScreen(hWnd, &pt);
   HWND hDlg = GetParent(hWnd);
-  CHAR String[256];
-  wsprintfA(String, "%4hd", pt.x);
-  SetDlgItemTextA(hDlg, IDC_MOUSE_X, String);
-  wsprintfA(String, "%4hd", pt.y);
-  SetDlgItemTextA(hDlg, IDC_MOUSE_Y, String);
-  HWND hitHwnd = HitTestWindowList(pt);
+  CHAR string[256];
+  wsprintfA(string, "%4hd", pt.x);
+  SetDlgItemTextA(hDlg, IDC_MOUSE_X, string);
+  wsprintfA(string, "%4hd", pt.y);
+  SetDlgItemTextA(hDlg, IDC_MOUSE_Y, string);
+  HWND hitHwnd = g_windowList.HitHwnd(pt);
   g_hWnd = hitHwnd;
   if (hitHwnd && hitHwnd != g_lastHoveredHwnd)
   {
     g_lastHoveredHwnd = hitHwnd;
-    SendMessageA(hitHwnd, WM_GETTEXT, 256, (LPARAM)String);
-    SetDlgItemTextA(hDlg, IDC_TITLE, String);
-    GetClassNameA(g_hWnd, String, 256);
-    SetDlgItemTextA(hDlg, IDC_CLASSNAME, String);
-    wsprintfA(String, "%-6d (0x%08X)", g_hWnd, g_hWnd);
-    SetDlgItemTextA(hDlg, IDC_HANDLE, String);
+    SendMessageA(hitHwnd, WM_GETTEXT, 256, (LPARAM)string);
+    SetDlgItemTextA(hDlg, IDC_TITLE, string);
+    GetClassNameA(g_hWnd, string, 256);
+    SetDlgItemTextA(hDlg, IDC_CLASSNAME, string);
+    wsprintfA(string, "%-6d (0x%08X)", g_hWnd, g_hWnd);
+    SetDlgItemTextA(hDlg, IDC_HANDLE, string);
     HWND Parent = GetParent(g_hWnd);
-    wsprintfA(String, "%-6d (0x%08X)", Parent, Parent);
-    SetDlgItemTextA(hDlg, IDC_PARENT, String);
+    wsprintfA(string, "%-6d (0x%08X)", Parent, Parent);
+    SetDlgItemTextA(hDlg, IDC_PARENT, string);
     HWND Window = GetWindow(g_hWnd, GW_OWNER);
-    wsprintfA(String, "%-6d (0x%08X)", Window, Window);
-    SetDlgItemTextA(hDlg, IDC_OWNER, String);
+    wsprintfA(string, "%-6d (0x%08X)", Window, Window);
+    SetDlgItemTextA(hDlg, IDC_OWNER, string);
     LONG WindowLongA = GetWindowLongA(g_hWnd, GWL_ID);
-    wsprintfA(String, "%-6d (0x%08X)", WindowLongA, WindowLongA);
-    SetDlgItemTextA(hDlg, IDC_WINDOWID, String);
+    wsprintfA(string, "%-6d (0x%08X)", WindowLongA, WindowLongA);
+    SetDlgItemTextA(hDlg, IDC_WINDOWID, string);
     LONG_PTR wndProc = GetWindowLongPtrA(g_hWnd, GWLP_WNDPROC);
-    wsprintfA(String, "0x%IX", (SIZE_T)wndProc);
-    SetDlgItemTextA(hDlg, IDC_WNDPROC, String);
+    wsprintfA(string, "0x%IX", (SIZE_T)wndProc);
+    SetDlgItemTextA(hDlg, IDC_WNDPROC, string);
     RECT Rect;
     GetWindowRect(g_hWnd, &Rect);
     RECT rcDst;
@@ -229,22 +201,22 @@ static void UpdateHover(HWND hWnd, LPARAM lParam)
       ScreenToClient(Parent, (LPPOINT)&Rect);
       ScreenToClient(Parent, (LPPOINT)&Rect.right);
       wsprintfA(
-          String,
+          string,
           "x:%4d y:%4d  w:%4d h:%4d",
           Rect.left,
           Rect.top,
           Rect.right - Rect.left,
           Rect.bottom - Rect.top);
-      SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, String);
+      SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, string);
     }
     wsprintfA(
-        String,
+        string,
         "x:%4d y:%4d  w:%4d h:%4d",
         rcDst.left,
         rcDst.top,
         rcDst.right - rcDst.left,
         rcDst.bottom - rcDst.top);
-    SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, String);
+    SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, string);
     EraseHighlightRect();
     DrawHighlightRect(&rcDst);
   }
@@ -381,7 +353,7 @@ static int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, D
     LOGPALETTE *logPal = &logPalBuf.hdr;
     logPal->palVersion = 0x300 /* LOGPALETTE version */;
     logPal->palNumEntries = 256;
-    for (unsigned i = 0; i < 256; i++)
+    for (unsigned i = 0; i < 256; ++i)
     {
       logPal->palPalEntry[i].peRed = prgbq[i].rgbRed;
       logPal->palPalEntry[i].peGreen = prgbq[i].rgbGreen;
@@ -476,9 +448,9 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
   {
     if (msg == WM_ERASEBKGND)
     {
-      RECT g_rc;
-      GetClientRect(hwnd, &g_rc);
-      FillRect((HDC)wParam, &g_rc, (HBRUSH)g_hBgBrush);
+      RECT rc;
+      GetClientRect(hwnd, &rc);
+      FillRect((HDC)wParam, &rc, (HBRUSH)g_hBgBrush);
       return 1;
     }
     if (msg == WM_PAINT)
@@ -486,33 +458,33 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
       CHAR text[256];
       GetWindowTextA(hwnd, text, sizeof(text));
       PAINTSTRUCT ps;
-      HDC g_hdc = BeginPaint(hwnd, &ps);
-      RECT g_rc;
-      GetClientRect(hwnd, &g_rc);
-      FillRect(g_hdc, &g_rc, (HBRUSH)g_hBgBrush);
+      HDC hdc = BeginPaint(hwnd, &ps);
+      RECT rc;
+      GetClientRect(hwnd, &rc);
+      FillRect(hdc, &rc, (HBRUSH)g_hBgBrush);
       HFONT hFont = (HFONT)SendMessageA(hwnd, WM_GETFONT, 0, 0);
-      HFONT hOldFont = (HFONT)SelectObject(g_hdc, hFont);
+      HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
       SIZE sz;
-      GetTextExtentPoint32A(g_hdc, "A", 1, &sz);
+      GetTextExtentPoint32A(hdc, "A", 1, &sz);
       /* Draw a simple gray border; top edge sits at mid-height of the caption */
       HPEN hPen = CreatePen(PS_SOLID, 1, RGB(80, 80, 80));
-      HPEN hOldPen = (HPEN)SelectObject(g_hdc, hPen);
-      HBRUSH hOldBrush = (HBRUSH)SelectObject(g_hdc, GetStockObject(NULL_BRUSH));
-      Rectangle(g_hdc, g_rc.left, g_rc.top + sz.cy / 2, g_rc.right - 1, g_rc.bottom - 1);
-      SelectObject(g_hdc, hOldBrush);
-      SelectObject(g_hdc, hOldPen);
+      HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+      HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+      Rectangle(hdc, rc.left, rc.top + sz.cy / 2, rc.right - 1, rc.bottom - 1);
+      SelectObject(hdc, hOldBrush);
+      SelectObject(hdc, hOldPen);
       DeleteObject(hPen);
       /* Draw caption text over the top border line */
       if (text[0])
       {
-        SetTextColor(g_hdc, RGB(242, 242, 242));
-        SetBkMode(g_hdc, TRANSPARENT);
+        SetTextColor(hdc, RGB(242, 242, 242));
+        SetBkMode(hdc, TRANSPARENT);
         UINT dtFlags = DT_TOP | DT_SINGLELINE;
         dtFlags |= (GetWindowLongA(hwnd, GWL_STYLE) & BS_CENTER) ? DT_CENTER : DT_LEFT;
-        RECT textRc = {g_rc.left + 8, g_rc.top, g_rc.right - 8, g_rc.top + sz.cy};
-        DrawTextA(g_hdc, text, -1, &textRc, dtFlags);
+        RECT textRc = {rc.left + 8, rc.top, rc.right - 8, rc.top + sz.cy};
+        DrawTextA(hdc, text, -1, &textRc, dtFlags);
       }
-      SelectObject(g_hdc, hOldFont);
+      SelectObject(hdc, hOldFont);
       EndPaint(hwnd, &ps);
       return 0;
     }
@@ -560,8 +532,7 @@ static void ApplyDarkMode(HWND hDlg)
 
 static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 {
-  HWND DlgItem = GetDlgItem(hDlg, nIDDlgItem);
-  return SendMessageA(DlgItem, WM_SETFONT, wParam, TRUE);
+  return SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, wParam, TRUE);
 }
 
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -634,43 +605,42 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       break;
     case IDC_COPY:
     {
-      static const int labelIds[] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
-      static const int valueIds[] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
-      CHAR String[256];
+      static const int len = 9;
+      static const int labelIds[len] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
+      static const int valueIds[len] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
+      CHAR string[256];
       int totalSize = 0;
-      for (unsigned i = 0; i < 9; ++i)
+      for (unsigned i = 0; i < len; ++i)
       {
-        GetDlgItemTextA(hDlg, labelIds[i], String, 256);
-        unsigned labelLen = strlen(String) + 1;
-        GetDlgItemTextA(hDlg, valueIds[i], String, 256);
-        totalSize += labelLen + 1 + strlen(String) + 2;
+        GetDlgItemTextA(hDlg, labelIds[i], string, 256);
+        unsigned labelLen = strlen(string) + 1;
+        GetDlgItemTextA(hDlg, valueIds[i], string, 256);
+        totalSize += labelLen + 1 + strlen(string) + 2;
       }
       OpenClipboard(hDlg);
       EmptyClipboard();
       HGLOBAL hClipMem = GlobalAlloc(GHND, totalSize + 1);
-      unsigned nResulta = 0;
       char *pWrite = (char *)GlobalLock(hClipMem);
-      do
+      for (unsigned i = 0; i < len; ++i)
       {
-        GetDlgItemTextA(hDlg, labelIds[nResulta], String, 256);
-        unsigned labelLen = strlen(String) + 1;
-        memcpy(pWrite, String, 4 * ((labelLen - 1) >> 2));
+        GetDlgItemTextA(hDlg, labelIds[i], string, 256);
+        unsigned labelLen = strlen(string) + 1;
+        memcpy(pWrite, string, 4 * ((labelLen - 1) >> 2));
         char *pWriteAligned = &pWrite[4 * ((labelLen - 1) >> 2)];
         char *pAfterLabel = &pWrite[labelLen - 1];
-        memcpy(pWriteAligned, &String[4 * ((labelLen - 1) >> 2)], ((BYTE)labelLen - 1) & 3);
+        memcpy(pWriteAligned, &string[4 * ((labelLen - 1) >> 2)], ((BYTE)labelLen - 1) & 3);
         *pAfterLabel++ = ':';
         *pAfterLabel++ = '\t';
-        GetDlgItemTextA(hDlg, valueIds[nResulta], String, 256);
-        unsigned valueLen = strlen(String) + 1;
-        memcpy(pAfterLabel, String, 4 * ((valueLen - 1) >> 2));
+        GetDlgItemTextA(hDlg, valueIds[i], string, 256);
+        unsigned valueLen = strlen(string) + 1;
+        memcpy(pAfterLabel, string, 4 * ((valueLen - 1) >> 2));
         char *pValueAligned = &pAfterLabel[4 * ((valueLen - 1) >> 2)];
-        ++nResulta;
         char *pAfterValue = &pAfterLabel[valueLen - 1];
-        memcpy(pValueAligned, &String[4 * ((valueLen - 1) >> 2)], ((BYTE)valueLen - 1) & 3);
+        memcpy(pValueAligned, &string[4 * ((valueLen - 1) >> 2)], ((BYTE)valueLen - 1) & 3);
         *pAfterValue++ = '\r';
         *pAfterValue = '\n';
         pWrite = pAfterValue + 1;
-      } while (nResulta < 9);
+      }
       GlobalUnlock(hClipMem);
       SetClipboardData(CF_TEXT, hClipMem);
       CloseClipboard();
