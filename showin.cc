@@ -609,7 +609,6 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       static const int len = 9;
       static const int labelIds[len] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
       static const int valueIds[len] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
-      int totalSize = 0;
       CHAR string[len * 2][256];
       for (unsigned i = 0; i < len; ++i)
       {
@@ -618,11 +617,10 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       }
       CHAR result[4096];
       unsigned result_len = wsprintfA(
-        result,
-        "%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s",
-        string[0], string[1], string[2], string[3], string[4], string[5], string[6], string[7], string[8], string[9],
-        string[10], string[11], string[12], string[13], string[14], string[15], string[16], string[17]
-      );
+          result,
+          "%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s",
+          string[0], string[1], string[2], string[3], string[4], string[5], string[6], string[7], string[8], string[9],
+          string[10], string[11], string[12], string[13], string[14], string[15], string[16], string[17]);
       OpenClipboard(hDlg);
       EmptyClipboard();
       HGLOBAL hClipMem = GlobalAlloc(GHND, result_len + 1);
