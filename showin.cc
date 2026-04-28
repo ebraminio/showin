@@ -414,8 +414,8 @@ static int InitResources()
   g_hBgBrush = CreateSolidBrush(btnFaceColor);
   g_hFontNormal = (HGDIOBJ)CreateCourierFont();
   g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
-  g_pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(LoadLibraryA("uxtheme.dll"), "SetWindowTheme");
-  g_pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(LoadLibraryA("dwmapi.dll"), "DwmSetWindowAttribute");
+  g_pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(GetModuleHandleA("uxtheme.dll"), "SetWindowTheme");
+  g_pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(GetModuleHandleA("dwmapi.dll"), "DwmSetWindowAttribute");
   return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&g_hBitmap, (HPALETTE *)&g_hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
