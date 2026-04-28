@@ -373,11 +373,8 @@ static int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, D
 
 static HFONT CreateCourierFont()
 {
-  LOGFONTA lf = {};
-  lf.lfItalic = 0;
-  lf.lfUnderline = 0;
-  lf.lfStrikeOut = 0;
-  lf.lfCharSet = 0;
+  LOGFONTA lf;
+  SecureZeroMemory(&lf, sizeof(LOGFONTA));
   lf.lfHeight = -MulDiv(8, GetSystemDpi(), 72);
   lf.lfWeight = 400;
   lf.lfOutPrecision = 3;
@@ -390,11 +387,8 @@ static HFONT CreateCourierFont()
 
 static HFONT CreateSansSerifFont()
 {
-  LOGFONTA lf = {};
-  lf.lfItalic = 0;
-  lf.lfUnderline = 0;
-  lf.lfStrikeOut = 0;
-  lf.lfCharSet = 0;
+  LOGFONTA lf;
+  SecureZeroMemory(&lf, sizeof(LOGFONTA));
   lf.lfHeight = -MulDiv(8, GetSystemDpi(), 72);
   lf.lfWeight = 700;
   lf.lfOutPrecision = 1;
