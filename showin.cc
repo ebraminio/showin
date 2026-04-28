@@ -517,27 +517,6 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
   return TRUE;
 }
 
-static void *m_memcpy(void *dst, const void *src, size_t count)
-{
-  void *ret = dst;
-
-  while ((count--) != 0u)
-  {
-    *static_cast<char *>(dst) = *(char *)src;
-    dst = static_cast<char *>(dst) + 1;
-    src = (char *)src + 1;
-  }
-  return ret;
-}
-
-size_t m_strlen(const char *str)
-{
-  const char *eos = str;
-  while (*eos++ != 0)
-    ;
-  return eos - str - 1;
-}
-
 static void ApplyDarkMode(HWND hDlg)
 {
   g_darkMode = IsDarkModeActive();
@@ -630,39 +609,24 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       static const int len = 9;
       static const int labelIds[len] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
       static const int valueIds[len] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
-      CHAR string[256];
       int totalSize = 0;
+      CHAR string[len * 2][256];
       for (unsigned i = 0; i < len; ++i)
       {
-        GetDlgItemTextA(hDlg, labelIds[i], string, 256);
-        unsigned labelLen = m_strlen(string) + 1;
-        GetDlgItemTextA(hDlg, valueIds[i], string, 256);
-        totalSize += labelLen + 1 + m_strlen(string) + 2;
+        GetDlgItemTextA(hDlg, labelIds[i], string[0 + i * 2], 256);
+        GetDlgItemTextA(hDlg, valueIds[i], string[1 + i * 2], 256);
       }
+      CHAR result[4096];
+      unsigned result_len = wsprintfA(
+        result,
+        "%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s\r\n%s:\t%s",
+        string[0], string[1], string[2], string[3], string[4], string[5], string[6], string[7], string[8], string[9],
+        string[10], string[11], string[12], string[13], string[14], string[15], string[16], string[17]
+      );
       OpenClipboard(hDlg);
       EmptyClipboard();
-      HGLOBAL hClipMem = GlobalAlloc(GHND, totalSize + 1);
-      char *pWrite = (char *)GlobalLock(hClipMem);
-      for (unsigned i = 0; i < len; ++i)
-      {
-        GetDlgItemTextA(hDlg, labelIds[i], string, 256);
-        unsigned labelLen = m_strlen(string) + 1;
-        m_memcpy(pWrite, string, 4 * ((labelLen - 1) >> 2));
-        char *pWriteAligned = &pWrite[4 * ((labelLen - 1) >> 2)];
-        char *pAfterLabel = &pWrite[labelLen - 1];
-        m_memcpy(pWriteAligned, &string[4 * ((labelLen - 1) >> 2)], ((BYTE)labelLen - 1) & 3);
-        *pAfterLabel++ = ':';
-        *pAfterLabel++ = '\t';
-        GetDlgItemTextA(hDlg, valueIds[i], string, 256);
-        unsigned valueLen = m_strlen(string) + 1;
-        m_memcpy(pAfterLabel, string, 4 * ((valueLen - 1) >> 2));
-        char *pValueAligned = &pAfterLabel[4 * ((valueLen - 1) >> 2)];
-        char *pAfterValue = &pAfterLabel[valueLen - 1];
-        m_memcpy(pValueAligned, &string[4 * ((valueLen - 1) >> 2)], ((BYTE)valueLen - 1) & 3);
-        *pAfterValue++ = '\r';
-        *pAfterValue = '\n';
-        pWrite = pAfterValue + 1;
-      }
+      HGLOBAL hClipMem = GlobalAlloc(GHND, result_len + 1);
+      wsprintfA((char *)GlobalLock(hClipMem), "%s", result);
       GlobalUnlock(hClipMem);
       SetClipboardData(CF_TEXT, hClipMem);
       CloseClipboard();
