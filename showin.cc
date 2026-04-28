@@ -381,7 +381,7 @@ static HFONT CreateCourierFont()
   lf.lfClipPrecision = 2;
   lf.lfQuality = 1;
   lf.lfPitchAndFamily = FIXED_PITCH | FF_MODERN;
-  strcpy(lf.lfFaceName, "Courier New");
+  wsprintfA(lf.lfFaceName, "Courier New");
   return CreateFontIndirectA(&lf);
 }
 
@@ -395,7 +395,7 @@ static HFONT CreateSansSerifFont()
   lf.lfClipPrecision = 2;
   lf.lfQuality = 1;
   lf.lfPitchAndFamily = VARIABLE_PITCH | FF_SWISS;
-  strcpy(lf.lfFaceName, "MS Sans Serif");
+  wsprintfA(lf.lfFaceName, "MS Sans Serif");
   return CreateFontIndirectA(&lf);
 }
 
@@ -621,7 +621,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       OpenClipboard(hDlg);
       EmptyClipboard();
       HGLOBAL hClipMem = GlobalAlloc(GHND, result_len + 1);
-      strcpy((char *)GlobalLock(hClipMem), result);
+      wsprintfA((char *)GlobalLock(hClipMem), "%s", result);
       GlobalUnlock(hClipMem);
       SetClipboardData(CF_TEXT, hClipMem);
       CloseClipboard();
