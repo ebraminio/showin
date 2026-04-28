@@ -605,45 +605,45 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       break;
     case IDC_COPY:
     {
-      static const int len = 9;
-      static const int labelIds[len] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
-      static const int valueIds[len] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
-      CHAR string[256];
-      int totalSize = 0;
-      for (unsigned i = 0; i < len; ++i)
-      {
-        GetDlgItemTextA(hDlg, labelIds[i], string, 256);
-        unsigned labelLen = strlen(string) + 1;
-        GetDlgItemTextA(hDlg, valueIds[i], string, 256);
-        totalSize += labelLen + 1 + strlen(string) + 2;
-      }
-      OpenClipboard(hDlg);
-      EmptyClipboard();
-      HGLOBAL hClipMem = GlobalAlloc(GHND, totalSize + 1);
-      char *pWrite = (char *)GlobalLock(hClipMem);
-      for (unsigned i = 0; i < len; ++i)
-      {
-        GetDlgItemTextA(hDlg, labelIds[i], string, 256);
-        unsigned labelLen = strlen(string) + 1;
-        memcpy(pWrite, string, 4 * ((labelLen - 1) >> 2));
-        char *pWriteAligned = &pWrite[4 * ((labelLen - 1) >> 2)];
-        char *pAfterLabel = &pWrite[labelLen - 1];
-        memcpy(pWriteAligned, &string[4 * ((labelLen - 1) >> 2)], ((BYTE)labelLen - 1) & 3);
-        *pAfterLabel++ = ':';
-        *pAfterLabel++ = '\t';
-        GetDlgItemTextA(hDlg, valueIds[i], string, 256);
-        unsigned valueLen = strlen(string) + 1;
-        memcpy(pAfterLabel, string, 4 * ((valueLen - 1) >> 2));
-        char *pValueAligned = &pAfterLabel[4 * ((valueLen - 1) >> 2)];
-        char *pAfterValue = &pAfterLabel[valueLen - 1];
-        memcpy(pValueAligned, &string[4 * ((valueLen - 1) >> 2)], ((BYTE)valueLen - 1) & 3);
-        *pAfterValue++ = '\r';
-        *pAfterValue = '\n';
-        pWrite = pAfterValue + 1;
-      }
-      GlobalUnlock(hClipMem);
-      SetClipboardData(CF_TEXT, hClipMem);
-      CloseClipboard();
+      // static const int len = 9;
+      // static const int labelIds[len] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
+      // static const int valueIds[len] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
+      // CHAR string[256];
+      // int totalSize = 0;
+      // for (unsigned i = 0; i < len; ++i)
+      // {
+      //   GetDlgItemTextA(hDlg, labelIds[i], string, 256);
+      //   unsigned labelLen = strlen(string) + 1;
+      //   GetDlgItemTextA(hDlg, valueIds[i], string, 256);
+      //   totalSize += labelLen + 1 + strlen(string) + 2;
+      // }
+      // OpenClipboard(hDlg);
+      // EmptyClipboard();
+      // HGLOBAL hClipMem = GlobalAlloc(GHND, totalSize + 1);
+      // char *pWrite = (char *)GlobalLock(hClipMem);
+      // for (unsigned i = 0; i < len; ++i)
+      // {
+      //   GetDlgItemTextA(hDlg, labelIds[i], string, 256);
+      //   unsigned labelLen = strlen(string) + 1;
+      //   memcpy(pWrite, string, 4 * ((labelLen - 1) >> 2));
+      //   char *pWriteAligned = &pWrite[4 * ((labelLen - 1) >> 2)];
+      //   char *pAfterLabel = &pWrite[labelLen - 1];
+      //   memcpy(pWriteAligned, &string[4 * ((labelLen - 1) >> 2)], ((BYTE)labelLen - 1) & 3);
+      //   *pAfterLabel++ = ':';
+      //   *pAfterLabel++ = '\t';
+      //   GetDlgItemTextA(hDlg, valueIds[i], string, 256);
+      //   unsigned valueLen = strlen(string) + 1;
+      //   memcpy(pAfterLabel, string, 4 * ((valueLen - 1) >> 2));
+      //   char *pValueAligned = &pAfterLabel[4 * ((valueLen - 1) >> 2)];
+      //   char *pAfterValue = &pAfterLabel[valueLen - 1];
+      //   memcpy(pValueAligned, &string[4 * ((valueLen - 1) >> 2)], ((BYTE)valueLen - 1) & 3);
+      //   *pAfterValue++ = '\r';
+      //   *pAfterValue = '\n';
+      //   pWrite = pAfterValue + 1;
+      // }
+      // GlobalUnlock(hClipMem);
+      // SetClipboardData(CF_TEXT, hClipMem);
+      // CloseClipboard();
       break;
     }
     case IDC_OPT_ONTOP:
