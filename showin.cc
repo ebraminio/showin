@@ -1,7 +1,7 @@
 #include <windows.h>
 #include "resource.h"
 
-static const int kWindowListCapacity = 1024;
+static const int kWindowListCapacity = 8192;
 
 struct WindowList
 {
