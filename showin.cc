@@ -5,13 +5,6 @@ static const int kWindowListCapacity = 1024;
 
 struct WindowList
 {
-  struct Entry
-  {
-    HWND hwnd;
-    int area;
-  } buf[kWindowListCapacity];
-  unsigned count;
-
   void Push(HWND hwnd, int area)
   {
     if (count >= kWindowListCapacity)
@@ -47,6 +40,14 @@ struct WindowList
     }
     return nullptr;
   }
+
+private:
+  struct Entry
+  {
+    HWND hwnd;
+    int area;
+  } buf[kWindowListCapacity];
+  unsigned count;
 } g_windowList;
 
 int g_optCloseWindow = 0;
@@ -405,7 +406,7 @@ static HFONT CreateSansSerifFont()
 
 static int InitResources()
 {
-  g_windowList.count = 0;
+  g_windowList.Clear();
   g_hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
   g_h = CreatePen(PS_DOT, 0, SysColor);
