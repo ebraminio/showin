@@ -18,7 +18,7 @@ struct WindowList
 
   void Sort()
   {
-    // Originally it was using a quick sort, let's use a bubble sort anyway
+    // Originally it was using a quick sort, let's use a bubble sort!
     for (unsigned i = 0; i < count - 1; ++i)
       for (unsigned j = 0; j < count - 1 - i; ++j)
         if (buf[j].area > buf[j + 1].area)
