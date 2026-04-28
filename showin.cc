@@ -621,7 +621,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       OpenClipboard(hDlg);
       EmptyClipboard();
       HGLOBAL hClipMem = GlobalAlloc(GHND, result_len + 1);
-      wsprintfA((char *)GlobalLock(hClipMem), "%s", result);
+      strcpy((char *)GlobalLock(hClipMem), result);
       GlobalUnlock(hClipMem);
       SetClipboardData(CF_TEXT, hClipMem);
       CloseClipboard();
