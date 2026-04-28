@@ -6,10 +6,10 @@ target("showin", function()
     add_syslinks("user32", "gdi32", "advapi32")
     set_exceptions("none")
     if is_plat("mingw") then
-        add_ldflags("-mwindows", {force = true})
+        add_ldflags("-mwindows", "-estart", "-nostartfiles", {force = true})
         add_cxxflags("-fno-rtti", "-fno-threadsafe-statics", {force = true})
     elseif is_plat("windows") then
-        add_ldflags("/SUBSYSTEM:WINDOWS", {force = true})
+        add_ldflags("/SUBSYSTEM:WINDOWS", "/entry:start", {force = true})
         add_cxxflags("/GR-", "/Zc:threadSafeInit-", {force = true})
     end
 end)

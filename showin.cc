@@ -700,10 +700,12 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   return 1;
 }
 
-int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
+// https://web.archive.org/web/20190205041452/https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+
+extern "C" void start()
 {
   TryEnableDpiAwareness();
-  g_hInst = hInstance;
-  DialogBoxParamA(hInstance, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
-  return 0;
+  g_hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
+  DialogBoxParamA(g_hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
 }
