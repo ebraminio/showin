@@ -517,6 +517,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     EraseHighlightRect(app_state);
     CleanupResources(app_state);
     EndDialog(hDlg, lParam);
+    ExitProcess(0);
     break;
   case WM_DRAWITEM:
     if (wParam == IDC_LOGO_PREVIEW)
@@ -660,5 +661,13 @@ extern "C" void start()
   SecureZeroMemory(&state, sizeof(app_state_t));
   TryEnableDpiAwareness();
   state.hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
-  DialogBoxParamA(state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
+  HWND hwnd = CreateDialogParamA(state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
+  ShowWindow(hwnd, SW_SHOW);
+  MSG msg;
+  while (GetMessageA(&msg, nullptr, 0, 0) > 0)
+  {
+    TranslateMessage(&msg);
+    DispatchMessageA(&msg);
+  }
+  ExitProcess(msg.wParam);
 }
