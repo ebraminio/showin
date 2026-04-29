@@ -53,7 +53,6 @@ private:
 
 int g_optCloseWindow = 0;
 HWND g_lastHoveredHwnd = nullptr;
-int g_bitmapHeight = 0;
 int g_isDragging = 0;
 int g_optIncludeHidden = 0;
 int g_optToggleEnabled = 0;
@@ -66,12 +65,13 @@ int g_optRedrawWindow = 0;
 HGDIOBJ g_hBgBrush = nullptr;
 HWND g_hWnd = nullptr;
 RECT g_rc = {0, 0, 0, 0};
-int g_bitmapWidth = 0;
 HDC g_hdc = nullptr;
 int g_optSetNoActivate = 0;
 int g_optToggleVisible = 0;
 int g_showHighlight = 0;
-HGDIOBJ g_hBitmap = nullptr;
+HGDIOBJ g_hBannerBitmap = nullptr;
+int g_bannerBitmapWidth = 0;
+int g_bannerBitmapHeight = 0;
 bool g_darkMode = false;
 WNDPROC g_origGroupBoxProc = nullptr;
 typedef HRESULT(WINAPI *PFN_SetWindowTheme)(HWND, LPCWSTR, LPCWSTR);
@@ -126,8 +126,8 @@ static BOOL EraseHighlightRect()
 
 static BOOL CleanupResources()
 {
-  DeleteObject(g_hBitmap);
-  g_hBitmap = nullptr;
+  DeleteObject(g_hBannerBitmap);
+  g_hBannerBitmap = nullptr;
   DeleteObject(g_hFontNormal);
   DeleteObject(g_hFontBold);
   EraseHighlightRect();
@@ -309,27 +309,27 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
 static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
 {
   HDC destDC = dis->hDC;
-  if (g_hBitmap)
+  if (g_hBannerBitmap)
   {
     HDC CompatibleDC = CreateCompatibleDC(destDC);
-    SelectObject(CompatibleDC, g_hBitmap);
+    SelectObject(CompatibleDC, g_hBannerBitmap);
     RealizePalette(destDC);
     StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
                dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
-               CompatibleDC, 0, 0, g_bitmapWidth, g_bitmapHeight, SRCCOPY);
+               CompatibleDC, 0, 0, g_bannerBitmapWidth, g_bannerBitmapHeight, SRCCOPY);
     DeleteDC(CompatibleDC);
   }
 }
 
 static void LoadBanner()
 {
-  g_hBitmap = LoadImageA(g_hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
-  if (!g_hBitmap)
+  g_hBannerBitmap = LoadImageA(g_hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+  if (!g_hBannerBitmap)
     return;
   BITMAP pv;
-  GetObjectA(g_hBitmap, sizeof(BITMAP), &pv);
-  g_bitmapWidth = pv.bmWidth;
-  g_bitmapHeight = pv.bmHeight;
+  GetObjectA(g_hBannerBitmap, sizeof(BITMAP), &pv);
+  g_bannerBitmapWidth = pv.bmWidth;
+  g_bannerBitmapHeight = pv.bmHeight;
 }
 
 static HFONT CreateCourierFont()
