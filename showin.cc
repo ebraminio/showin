@@ -56,32 +56,32 @@ typedef HRESULT(WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
 
 struct app_state_t
 {
-  WindowList windowList;
-  int optCloseWindow;
-  HWND lastHoveredHwnd;
-  int isDragging;
-  int optIncludeHidden;
-  int optToggleEnabled;
-  HGDIOBJ hFontBold;
-  HINSTANCE hInst;
-  HGDIOBJ h;
-  int optSetTopmost;
-  HGDIOBJ hFontNormal;
-  int optRedrawWindow;
-  HGDIOBJ hBgBrush;
-  HWND hWnd;
-  RECT rc;
-  HDC hdc;
-  int optSetNoActivate;
-  int optToggleVisible;
-  int showHighlight;
-  HGDIOBJ hBannerBitmap;
-  int bannerBitmapWidth;
-  int bannerBitmapHeight;
   bool darkMode;
-  WNDPROC origGroupBoxProc;
-  PFN_SetWindowTheme pfnSetWindowTheme;
+  bool isDragging;
+  bool optCloseWindow;
+  bool optIncludeHidden;
+  bool optRedrawWindow;
+  bool optSetNoActivate;
+  bool optSetTopmost;
+  bool optToggleEnabled;
+  bool optToggleVisible;
+  bool showHighlight;
+  HDC hdc;
+  HGDIOBJ h;
+  HGDIOBJ hBannerBitmap;
+  HGDIOBJ hBgBrush;
+  HGDIOBJ hFontBold;
+  HGDIOBJ hFontNormal;
+  HINSTANCE hInst;
+  HWND hWnd;
+  HWND lastHoveredHwnd;
+  int bannerBitmapHeight;
+  int bannerBitmapWidth;
   PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
+  PFN_SetWindowTheme pfnSetWindowTheme;
+  RECT rc;
+  WindowList windowList;
+  WNDPROC origGroupBoxProc;
 } state;
 
 static void TryEnableDpiAwareness()
@@ -599,17 +599,17 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     case IDC_OPT_ONTOP:
     {
-      LRESULT onTopChecked = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
-      app_state.optSetNoActivate = onTopChecked == 1;
-      if (onTopChecked == 1 && app_state.optSetTopmost)
+      bool onTopChecked = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      app_state.optSetNoActivate = onTopChecked;
+      if (onTopChecked && app_state.optSetTopmost)
         SendDlgItemMessageA(hDlg, IDC_OPT_NOTONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
       break;
     }
     case IDC_OPT_NOTONTOP:
     {
-      LRESULT notOnTopChecked = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0);
-      app_state.optSetTopmost = notOnTopChecked == 1;
-      if (notOnTopChecked == 1 && app_state.optSetNoActivate)
+      bool notOnTopChecked = SendMessageA((HWND)lParam, BM_GETCHECK, 0, 0) == 1;
+      app_state.optSetTopmost = notOnTopChecked;
+      if (notOnTopChecked && app_state.optSetNoActivate)
         SendDlgItemMessageA(hDlg, IDC_OPT_ONTOP, BM_SETCHECK, BST_UNCHECKED, 0);
       break;
     }
