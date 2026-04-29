@@ -57,31 +57,31 @@ typedef HRESULT(WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
 struct app_state_t
 {
   WindowList windowList;
-  int optCloseWindow = 0;
-  HWND lastHoveredHwnd = nullptr;
-  int isDragging = 0;
-  int optIncludeHidden = 0;
-  int optToggleEnabled = 0;
-  HGDIOBJ hFontBold = nullptr;
-  HINSTANCE hInst = nullptr;
-  HGDIOBJ h = nullptr;
-  int optSetTopmost = 0;
-  HGDIOBJ hFontNormal = nullptr;
-  int optRedrawWindow = 0;
-  HGDIOBJ hBgBrush = nullptr;
-  HWND hWnd = nullptr;
-  RECT rc = {0, 0, 0, 0};
-  HDC hdc = nullptr;
-  int optSetNoActivate = 0;
-  int optToggleVisible = 0;
-  int showHighlight = 0;
-  HGDIOBJ hBannerBitmap = nullptr;
-  int bannerBitmapWidth = 0;
-  int bannerBitmapHeight = 0;
-  bool darkMode = false;
-  WNDPROC origGroupBoxProc = nullptr;
-  PFN_SetWindowTheme pfnSetWindowTheme = nullptr;
-  PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute = nullptr;
+  int optCloseWindow;
+  HWND lastHoveredHwnd;
+  int isDragging;
+  int optIncludeHidden;
+  int optToggleEnabled;
+  HGDIOBJ hFontBold;
+  HINSTANCE hInst;
+  HGDIOBJ h;
+  int optSetTopmost;
+  HGDIOBJ hFontNormal;
+  int optRedrawWindow;
+  HGDIOBJ hBgBrush;
+  HWND hWnd;
+  RECT rc;
+  HDC hdc;
+  int optSetNoActivate;
+  int optToggleVisible;
+  int showHighlight;
+  HGDIOBJ hBannerBitmap;
+  int bannerBitmapWidth;
+  int bannerBitmapHeight;
+  bool darkMode;
+  WNDPROC origGroupBoxProc;
+  PFN_SetWindowTheme pfnSetWindowTheme;
+  PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
 } state;
 
 static void TryEnableDpiAwareness()
@@ -369,7 +369,6 @@ static HFONT CreateSansSerifFont()
 
 static void InitResources(app_state_t &app_state)
 {
-  app_state.windowList.Clear();
   app_state.hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
   app_state.h = CreatePen(PS_DOT, 0, SysColor);
@@ -657,6 +656,7 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 extern "C" void start()
 {
+  SecureZeroMemory(&state, sizeof(app_state_t));
   TryEnableDpiAwareness();
   state.hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
   DialogBoxParamA(state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
