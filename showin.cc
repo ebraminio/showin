@@ -81,6 +81,7 @@ struct app_state_t
   unsigned bannerBitmapHeight;
   unsigned bannerBitmapWidth;
   WindowList windowList;
+  WNDPROC origDlgProc;
   WNDPROC origGroupBoxProc;
 } state;
 
@@ -227,10 +228,10 @@ static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
   }
 }
 
-LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-  app_state_t &app_state = state;
-  switch (Msg)
+  app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
+  switch (msg)
   {
   case WM_MOUSEMOVE:
     if (app_state.isDragging)
@@ -309,8 +310,7 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
     }
     return 0;
   }
-  auto origProc = (LRESULT(__stdcall *)(HWND, UINT, WPARAM, LPARAM))GetWindowLongPtrA(hWnd, GWLP_USERDATA);
-  return CallWindowProcA(origProc, hWnd, Msg, wParam, lParam);
+  return CallWindowProcA(app_state.origDlgProc, hWnd, msg, wParam, lParam);
 }
 
 static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
@@ -531,8 +531,8 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
     HICON IconA = LoadIconA(app_state.hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
-    LONG_PTR prevWndProc = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
-    SetWindowLongPtrA(hDlga, GWLP_USERDATA, prevWndProc);
+    app_state.origDlgProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
+    SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
     SetControlFont(hDlg, IDC_TITLE, app_state.hFontBold);
     SetControlFont(hDlg, IDC_HANDLE, app_state.hFontNormal);
     SetControlFont(hDlg, IDC_PARENT, app_state.hFontNormal);
