@@ -2,11 +2,11 @@
 #include <windows.h>
 #include "resource.h"
 
-static const int kWindowListCapacity = 8192;
+static const unsigned kWindowListCapacity = 8192;
 
 struct WindowList
 {
-  void Push(HWND hwnd, int area)
+  void Push(HWND hwnd, unsigned area)
   {
     if (count >= kWindowListCapacity)
       return;
@@ -46,7 +46,7 @@ private:
   struct Entry
   {
     HWND hwnd;
-    int area;
+    unsigned area;
   } buf[kWindowListCapacity];
   unsigned count;
 };
@@ -75,11 +75,11 @@ struct app_state_t
   HINSTANCE hInst;
   HWND hWnd;
   HWND lastHoveredHwnd;
-  int bannerBitmapHeight;
-  int bannerBitmapWidth;
   PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
   PFN_SetWindowTheme pfnSetWindowTheme;
   RECT rc;
+  unsigned bannerBitmapHeight;
+  unsigned bannerBitmapWidth;
   WindowList windowList;
   WNDPROC origGroupBoxProc;
 } state;
@@ -495,9 +495,9 @@ static void ApplyDarkMode(app_state_t &app_state, HWND hDlg)
   InvalidateRect(hDlg, nullptr, TRUE);
 }
 
-static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
+static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
 {
-  return SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, wParam, TRUE);
+  return SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
 }
 
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -532,14 +532,14 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     LONG_PTR prevWndProc = SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, prevWndProc);
-    SetControlFont(hDlg, IDC_TITLE, (WPARAM)app_state.hFontBold);
-    SetControlFont(hDlg, IDC_HANDLE, (WPARAM)app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_PARENT, (WPARAM)app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_OWNER, (WPARAM)app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_WINDOWID, (WPARAM)app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_CLIENT_COORDS, (WPARAM)app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_WINDOW_COORDS, (WPARAM)app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_WNDPROC, (WPARAM)app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_TITLE, app_state.hFontBold);
+    SetControlFont(hDlg, IDC_HANDLE, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_PARENT, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_OWNER, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_WINDOWID, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_CLIENT_COORDS, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_WINDOW_COORDS, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_WNDPROC, app_state.hFontNormal);
     HWND highlightCheckbox = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
     app_state.showHighlight = 1;
@@ -571,7 +571,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
       break;
     case IDC_COPY:
     {
-      static const int len = 9;
+      static const unsigned len = 9;
       static const int labelIds[len] = {IDC_LBL_TITLE, IDC_LBL_CLASSNAME, IDC_LBL_HANDLE, IDC_LBL_PARENT, IDC_LBL_OWNER, IDC_LBL_WINDOWID, IDC_LBL_WNDPROC, IDC_LBL_CLIENT, IDC_LBL_WINDOW};
       static const int valueIds[len] = {IDC_TITLE, IDC_CLASSNAME, IDC_HANDLE, IDC_PARENT, IDC_OWNER, IDC_WINDOWID, IDC_WNDPROC, IDC_CLIENT_COORDS, IDC_WINDOW_COORDS};
       CHAR string[len * 2][256];
