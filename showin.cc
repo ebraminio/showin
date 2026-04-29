@@ -143,14 +143,14 @@ static BOOL CleanupResources(app_state_t &app_state)
 
 BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
 {
-  app_state_t &app_state = state;
+  app_state_t &app_state = *(app_state_t *)lParam;
   if (app_state.optIncludeHidden || IsWindowVisible(hWnd))
   {
     struct tagRECT rect;
     GetWindowRect(hWnd, &rect);
     if (!IsRectEmpty(&rect))
       app_state.windowList.Push(hWnd, (rect.right - rect.left) * (rect.bottom - rect.top));
-    EnumChildWindows(hWnd, EnumFunc, 0);
+    EnumChildWindows(hWnd, EnumFunc, (LPARAM)&app_state);
   }
   return 1;
 }
@@ -158,7 +158,7 @@ BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
 static void RebuildWindowList(app_state_t &app_state)
 {
   app_state.windowList.Clear();
-  EnumWindows(EnumFunc, 0);
+  EnumWindows(EnumFunc, (LPARAM)&app_state);
   app_state.windowList.Sort();
 }
 
@@ -456,9 +456,9 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
   return CallWindowProcA(app_state.origGroupBoxProc, hwnd, msg, wParam, lParam);
 }
 
-static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
+static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM lParam)
 {
-  app_state_t &app_state = state;
+  app_state_t &app_state = *(app_state_t *)lParam;
   CHAR cls[64];
   GetClassNameA(hwnd, cls, sizeof(cls));
   if (lstrcmpiA(cls, "Button") == 0)
@@ -476,7 +476,7 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
       }
     }
     else if (app_state.pfnSetWindowTheme)
-      app_state.pfnSetWindowTheme(hwnd, dark ? L"DarkMode_Explorer" : L"", nullptr);
+      app_state.pfnSetWindowTheme(hwnd, app_state.darkMode ? L"DarkMode_Explorer" : L"", nullptr);
   }
   return TRUE;
 }
@@ -484,7 +484,7 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
 static void ApplyDarkMode(app_state_t &app_state, HWND hDlg)
 {
   app_state.darkMode = IsDarkModeActive();
-  EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)app_state.darkMode);
+  EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)&app_state);
   DeleteObject(app_state.hBgBrush);
   if (app_state.pfnDwmSetWindowAttribute)
   {
