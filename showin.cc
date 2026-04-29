@@ -83,7 +83,7 @@ struct app_state_t
   WindowList windowList;
   WNDPROC origDlgProc;
   WNDPROC origGroupBoxProc;
-} state;
+};
 
 static void TryEnableDpiAwareness()
 {
@@ -503,7 +503,10 @@ static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
 
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  app_state_t &app_state = state;
+  if (uMsg == WM_INITDIALOG)
+    // app_state isn't ready on init dialog, just skip
+    return 0;
+  app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hDlg, GWLP_USERDATA);
   switch (uMsg)
   {
   case WM_ACTIVATE:
@@ -523,7 +526,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     if (wParam == IDC_LOGO_PREVIEW)
       DrawBitmapPreview(app_state, hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
     break;
-  case WM_INITDIALOG:
+  case WM_SHOWWINDOW:
   {
     InitResources(app_state);
     SetWindowTextA(hDlg, "ShoWin");
@@ -658,10 +661,12 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 extern "C" void start()
 {
+  app_state_t state;
   SecureZeroMemory(&state, sizeof(app_state_t));
   TryEnableDpiAwareness();
   state.hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
   HWND hwnd = CreateDialogParamA(state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
+  SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
   ShowWindow(hwnd, SW_SHOW);
   MSG msg;
   while (GetMessageA(&msg, nullptr, 0, 0) > 0)
