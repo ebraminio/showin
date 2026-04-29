@@ -82,7 +82,7 @@ struct app_state_t
   WNDPROC origGroupBoxProc = nullptr;
   PFN_SetWindowTheme pfnSetWindowTheme = nullptr;
   PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute = nullptr;
-} app_state;
+} state;
 
 static void TryEnableDpiAwareness()
 {
@@ -101,7 +101,7 @@ static UINT GetSystemDpi()
   return pfn ? pfn() : 96;
 }
 
-static void DrawHighlightRect(RECT *rect)
+static void DrawHighlightRect(app_state_t &app_state, RECT *rect)
 {
   if (!app_state.showHighlight)
     return;
@@ -122,20 +122,20 @@ static void DrawHighlightRect(RECT *rect)
   SetRect(&app_state.rc, rect->left, rect->top, rect->right, rect->bottom);
 }
 
-static BOOL EraseHighlightRect()
+static BOOL EraseHighlightRect(app_state_t &app_state)
 {
   if (!IsRectEmpty(&app_state.rc))
-    DrawHighlightRect(&app_state.rc);
+    DrawHighlightRect(app_state, &app_state.rc);
   return SetRect(&app_state.rc, 0, 0, 0, 0);
 }
 
-static BOOL CleanupResources()
+static BOOL CleanupResources(app_state_t &app_state)
 {
   DeleteObject(app_state.hBannerBitmap);
   app_state.hBannerBitmap = nullptr;
   DeleteObject(app_state.hFontNormal);
   DeleteObject(app_state.hFontBold);
-  EraseHighlightRect();
+  EraseHighlightRect(app_state);
   DeleteObject(app_state.hBgBrush);
   DeleteObject(app_state.h);
   return DeleteDC(app_state.hdc);
@@ -143,6 +143,7 @@ static BOOL CleanupResources()
 
 BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
 {
+  app_state_t &app_state = state;
   if (app_state.optIncludeHidden || IsWindowVisible(hWnd))
   {
     struct tagRECT rect;
@@ -154,14 +155,14 @@ BOOL CALLBACK EnumFunc(HWND hWnd, LPARAM lParam)
   return 1;
 }
 
-static void RebuildWindowList()
+static void RebuildWindowList(app_state_t &app_state)
 {
   app_state.windowList.Clear();
   EnumWindows(EnumFunc, 0);
   app_state.windowList.Sort();
 }
 
-static void UpdateHover(HWND hWnd, LPARAM lParam)
+static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
 {
   POINT pt;
   pt.x = (__int16)lParam;
@@ -221,38 +222,39 @@ static void UpdateHover(HWND hWnd, LPARAM lParam)
         rcDst.right - rcDst.left,
         rcDst.bottom - rcDst.top);
     SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, string);
-    EraseHighlightRect();
-    DrawHighlightRect(&rcDst);
+    EraseHighlightRect(app_state);
+    DrawHighlightRect(app_state, &rcDst);
   }
 }
 
 LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
+  app_state_t &app_state = state;
   switch (Msg)
   {
   case WM_MOUSEMOVE:
     if (app_state.isDragging)
-      UpdateHover(hWnd, lParam);
+      UpdateHover(app_state, hWnd, lParam);
     break;
   case WM_LBUTTONDOWN:
   {
     if (app_state.isDragging)
       return 0;
-    RebuildWindowList();
+    RebuildWindowList(app_state);
     app_state.lastHoveredHwnd = 0;
     SetRect(&app_state.rc, 0, 0, 0, 0);
     SetCapture(hWnd);
     HCURSOR CursorA = LoadCursorA(app_state.hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
     app_state.isDragging = 1;
-    UpdateHover(hWnd, lParam);
+    UpdateHover(app_state, hWnd, lParam);
     break;
   }
   case WM_LBUTTONUP:
     if (app_state.isDragging)
     {
       app_state.isDragging = 0;
-      EraseHighlightRect();
+      EraseHighlightRect(app_state);
       ReleaseCapture();
       HCURSOR arrowCursor = LoadCursorA(nullptr, IDC_ARROW);
       SetCursor(arrowCursor);
@@ -268,13 +270,13 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
       {
         if (app_state.optToggleEnabled)
         {
-          EraseHighlightRect();
+          EraseHighlightRect(app_state);
           BOOL isEnabled = IsWindowEnabled(app_state.hWnd);
           EnableWindow(app_state.hWnd, !isEnabled);
         }
         if (app_state.optToggleVisible)
         {
-          EraseHighlightRect();
+          EraseHighlightRect(app_state);
           /* Toggle visibility: SW_SHOW(5) if hidden, SW_HIDE(0) if visible */
           int showCmd = -IsWindowVisible(app_state.hWnd);
           showCmd &= ~4; /* clear bit 2 of low byte */
@@ -282,25 +284,25 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
         }
         if (app_state.optRedrawWindow)
         {
-          EraseHighlightRect();
+          EraseHighlightRect(app_state);
           InvalidateRect(app_state.hWnd, nullptr, TRUE);
           UpdateWindow(app_state.hWnd);
         }
         if (app_state.optSetNoActivate)
         {
-          EraseHighlightRect();
+          EraseHighlightRect(app_state);
           SetWindowPos(app_state.hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
           UpdateWindow(app_state.hWnd);
         }
         if (app_state.optSetTopmost)
         {
-          EraseHighlightRect();
+          EraseHighlightRect(app_state);
           SetWindowPos(app_state.hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
           UpdateWindow(app_state.hWnd);
         }
         if (app_state.optCloseWindow)
         {
-          EraseHighlightRect();
+          EraseHighlightRect(app_state);
           PostMessageA(app_state.hWnd, WM_CLOSE, 0, 0);
         }
       }
@@ -311,7 +313,7 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPa
   return CallWindowProcA(origProc, hWnd, Msg, wParam, lParam);
 }
 
-static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
+static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
 {
   HDC destDC = dis->hDC;
   if (app_state.hBannerBitmap)
@@ -326,7 +328,7 @@ static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   }
 }
 
-static void LoadBanner()
+static void LoadBanner(app_state_t &app_state)
 {
   app_state.hBannerBitmap = LoadImageA(app_state.hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
   if (!app_state.hBannerBitmap)
@@ -365,7 +367,7 @@ static HFONT CreateSansSerifFont()
   return CreateFontIndirectA(&lf);
 }
 
-static void InitResources()
+static void InitResources(app_state_t &app_state)
 {
   app_state.windowList.Clear();
   app_state.hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
@@ -377,7 +379,7 @@ static void InitResources()
   app_state.hFontBold = (HGDIOBJ)CreateSansSerifFont();
   app_state.pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(GetModuleHandleA("uxtheme.dll"), "SetWindowTheme");
   app_state.pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(GetModuleHandleA("dwmapi.dll"), "DwmSetWindowAttribute");
-  LoadBanner();
+  LoadBanner(app_state);
 }
 
 static BOOL PositionWindowBottomRight(HWND hWnd)
@@ -406,6 +408,7 @@ static bool IsDarkModeActive()
 
 static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+  app_state_t &app_state = state;
   if (app_state.darkMode)
   {
     if (msg == WM_ERASEBKGND)
@@ -456,6 +459,7 @@ static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 
 static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
 {
+  app_state_t &app_state = state;
   CHAR cls[64];
   GetClassNameA(hwnd, cls, sizeof(cls));
   if (lstrcmpiA(cls, "Button") == 0)
@@ -478,7 +482,7 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM dark)
   return TRUE;
 }
 
-static void ApplyDarkMode(HWND hDlg)
+static void ApplyDarkMode(app_state_t &app_state, HWND hDlg)
 {
   app_state.darkMode = IsDarkModeActive();
   EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)app_state.darkMode);
@@ -499,6 +503,7 @@ static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, WPARAM wParam)
 
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+  app_state_t &app_state = state;
   switch (uMsg)
   {
   case WM_ACTIVATE:
@@ -509,20 +514,20 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     break;
   case WM_CLOSE:
-    EraseHighlightRect();
-    CleanupResources();
+    EraseHighlightRect(app_state);
+    CleanupResources(app_state);
     EndDialog(hDlg, lParam);
     break;
   case WM_DRAWITEM:
     if (wParam == IDC_LOGO_PREVIEW)
-      DrawBitmapPreview(hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
+      DrawBitmapPreview(app_state, hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
     break;
   case WM_INITDIALOG:
   {
-    InitResources();
+    InitResources(app_state);
     SetWindowTextA(hDlg, "ShoWin");
     PositionWindowBottomRight(hDlg);
-    ApplyDarkMode(hDlg);
+    ApplyDarkMode(app_state, hDlg);
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
     HICON IconA = LoadIconA(app_state.hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
@@ -614,7 +619,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     }
     break;
   case WM_SETTINGCHANGE:
-    ApplyDarkMode(hDlg);
+    ApplyDarkMode(app_state, hDlg);
     break;
   case WM_CTLCOLORDLG:
   {
@@ -653,6 +658,6 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 extern "C" void start()
 {
   TryEnableDpiAwareness();
-  app_state.hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
-  DialogBoxParamA(app_state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
+  state.hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
+  DialogBoxParamA(state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
 }
