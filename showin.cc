@@ -67,7 +67,6 @@ HGDIOBJ g_hBgBrush = nullptr;
 HWND g_hWnd = nullptr;
 RECT g_rc = {0, 0, 0, 0};
 int g_bitmapWidth = 0;
-HGDIOBJ g_hPal = nullptr;
 HDC g_hdc = nullptr;
 int g_optSetNoActivate = 0;
 int g_optToggleVisible = 0;
@@ -129,8 +128,6 @@ static BOOL CleanupResources()
 {
   DeleteObject(g_hBitmap);
   g_hBitmap = nullptr;
-  DeleteObject(g_hPal);
-  g_hPal = nullptr;
   DeleteObject(g_hFontNormal);
   DeleteObject(g_hFontBold);
   EraseHighlightRect();
@@ -316,7 +313,6 @@ static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   {
     HDC CompatibleDC = CreateCompatibleDC(destDC);
     SelectObject(CompatibleDC, g_hBitmap);
-    SelectPalette(destDC, (HPALETTE)g_hPal, 0);
     RealizePalette(destDC);
     StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
                dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
@@ -332,37 +328,6 @@ static void LoadBanner()
     return;
   BITMAP pv;
   GetObjectA(g_hBitmap, sizeof(BITMAP), &pv);
-  if (pv.bmBitsPixel * pv.bmPlanes > 8)
-  {
-    HDC DC = GetDC(nullptr);
-    g_hPal = CreateHalftonePalette(DC);
-    ReleaseDC(nullptr, DC);
-  }
-  else
-  {
-    HDC hdca = CreateCompatibleDC(nullptr);
-    HGDIOBJ ha = SelectObject(hdca, g_hBitmap);
-    RGBQUAD prgbq[256];
-    GetDIBColorTable(hdca, 0, 0x100u, prgbq);
-    struct
-    {
-      LOGPALETTE hdr;
-      PALETTEENTRY extra[255];
-    } logPalBuf;
-    LOGPALETTE *logPal = &logPalBuf.hdr;
-    logPal->palVersion = 0x300 /* LOGPALETTE version */;
-    logPal->palNumEntries = 256;
-    for (unsigned i = 0; i < 256; ++i)
-    {
-      logPal->palPalEntry[i].peRed = prgbq[i].rgbRed;
-      logPal->palPalEntry[i].peGreen = prgbq[i].rgbGreen;
-      logPal->palPalEntry[i].peBlue = prgbq[i].rgbBlue;
-      logPal->palPalEntry[i].peFlags = 0;
-    }
-    g_hPal = CreatePalette(logPal);
-    SelectObject(hdca, ha);
-    DeleteDC(hdca);
-  }
   g_bitmapWidth = pv.bmWidth;
   g_bitmapHeight = pv.bmHeight;
 }
