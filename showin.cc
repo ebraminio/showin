@@ -407,7 +407,7 @@ static bool IsDarkModeActive()
 
 static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-  app_state_t &app_state = state;
+  app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
   if (app_state.darkMode)
   {
     if (msg == WM_ERASEBKGND)
@@ -473,6 +473,7 @@ static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM lParam)
         if (!app_state.origGroupBoxProc)
           app_state.origGroupBoxProc = cur;
         SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
+        SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&app_state);
       }
     }
     else if (app_state.pfnSetWindowTheme)
