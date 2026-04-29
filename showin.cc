@@ -325,26 +325,23 @@ static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   }
 }
 
-static void LoadBanner(HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
+static void LoadBanner()
 {
-  *g_hdc = nullptr;
-  *outPalette = nullptr;
-  HANDLE ImageA = LoadImageA(g_hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
-  *g_hdc = ImageA;
-  if (!ImageA)
+  g_hBitmap = LoadImageA(g_hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+  if (!g_hBitmap)
     return;
   BITMAP pv;
-  GetObjectA(ImageA, sizeof(BITMAP), &pv);
+  GetObjectA(g_hBitmap, sizeof(BITMAP), &pv);
   if (pv.bmBitsPixel * pv.bmPlanes > 8)
   {
     HDC DC = GetDC(nullptr);
-    *outPalette = CreateHalftonePalette(DC);
+    g_hPal = CreateHalftonePalette(DC);
     ReleaseDC(nullptr, DC);
   }
   else
   {
     HDC hdca = CreateCompatibleDC(nullptr);
-    HGDIOBJ ha = SelectObject(hdca, *g_hdc);
+    HGDIOBJ ha = SelectObject(hdca, g_hBitmap);
     RGBQUAD prgbq[256];
     GetDIBColorTable(hdca, 0, 0x100u, prgbq);
     struct
@@ -362,12 +359,12 @@ static void LoadBanner(HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DW
       logPal->palPalEntry[i].peBlue = prgbq[i].rgbBlue;
       logPal->palPalEntry[i].peFlags = 0;
     }
-    *outPalette = CreatePalette(logPal);
+    g_hPal = CreatePalette(logPal);
     SelectObject(hdca, ha);
     DeleteDC(hdca);
   }
-  *outWidth = pv.bmWidth;
-  *outHeight = pv.bmHeight;
+  g_bitmapWidth = pv.bmWidth;
+  g_bitmapHeight = pv.bmHeight;
 }
 
 static HFONT CreateCourierFont()
@@ -410,7 +407,7 @@ static void InitResources()
   g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
   g_pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(GetModuleHandleA("uxtheme.dll"), "SetWindowTheme");
   g_pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(GetModuleHandleA("dwmapi.dll"), "DwmSetWindowAttribute");
-  LoadBanner((HGDIOBJ *)&g_hBitmap, (HPALETTE *)&g_hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
+  LoadBanner();
 }
 
 static BOOL PositionWindowBottomRight(HWND hWnd)
