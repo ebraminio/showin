@@ -3,7 +3,7 @@
 
 /* Top-level resources */
 #define IDD_MAIN           101
-#define IDB_LOGO           102
+#define IDB_BANNER         102
 #define IDC_CROSSHAIR      103
 #define IDI_APP            104
 

@@ -325,14 +325,14 @@ static void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   }
 }
 
-static int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
+static void LoadBanner(HGDIOBJ *g_hdc, HPALETTE *outPalette, DWORD *outWidth, DWORD *outHeight)
 {
   *g_hdc = nullptr;
   *outPalette = nullptr;
-  HANDLE ImageA = LoadImageA(g_hInst, MAKEINTRESOURCEA((WORD)(UINT_PTR)h), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
+  HANDLE ImageA = LoadImageA(g_hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
   *g_hdc = ImageA;
   if (!ImageA)
-    return 0;
+    return;
   BITMAP pv;
   GetObjectA(ImageA, sizeof(BITMAP), &pv);
   if (pv.bmBitsPixel * pv.bmPlanes > 8)
@@ -368,7 +368,6 @@ static int LoadBitmapResource(HGDIOBJ h, HGDIOBJ *g_hdc, HPALETTE *outPalette, D
   }
   *outWidth = pv.bmWidth;
   *outHeight = pv.bmHeight;
-  return 1;
 }
 
 static HFONT CreateCourierFont()
@@ -399,7 +398,7 @@ static HFONT CreateSansSerifFont()
   return CreateFontIndirectA(&lf);
 }
 
-static int InitResources()
+static void InitResources()
 {
   g_windowList.Clear();
   g_hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
@@ -411,7 +410,7 @@ static int InitResources()
   g_hFontBold = (HGDIOBJ)CreateSansSerifFont();
   g_pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(GetModuleHandleA("uxtheme.dll"), "SetWindowTheme");
   g_pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(GetModuleHandleA("dwmapi.dll"), "DwmSetWindowAttribute");
-  return LoadBitmapResource((HGDIOBJ)IDB_LOGO, (HGDIOBJ *)&g_hBitmap, (HPALETTE *)&g_hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
+  LoadBanner((HGDIOBJ *)&g_hBitmap, (HPALETTE *)&g_hPal, (DWORD *)&g_bitmapWidth, (DWORD *)&g_bitmapHeight);
 }
 
 static BOOL PositionWindowBottomRight(HWND hWnd)
