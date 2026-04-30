@@ -245,11 +245,11 @@ static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
     SetDlgItemTextA(hDlg, IDC_CLASSNAME, string);
     wsprintfA(string, "%-6d (0x%08X)", app_state.hWnd, app_state.hWnd);
     SetDlgItemTextA(hDlg, IDC_HANDLE, string);
-    HWND Parent = GetParent(app_state.hWnd);
-    wsprintfA(string, "%-6d (0x%08X)", Parent, Parent);
+    HWND parentId = GetParent(app_state.hWnd);
+    wsprintfA(string, "%-6d (0x%08X)", parentId, parentId);
     SetDlgItemTextA(hDlg, IDC_PARENT, string);
-    HWND Window = GetWindow(app_state.hWnd, GW_OWNER);
-    wsprintfA(string, "%-6d (0x%08X)", Window, Window);
+    HWND windowId = GetWindow(app_state.hWnd, GW_OWNER);
+    wsprintfA(string, "%-6d (0x%08X)", windowId, windowId);
     SetDlgItemTextA(hDlg, IDC_OWNER, string);
     LONG WindowLongA = GetWindowLongA(app_state.hWnd, GWL_ID);
     wsprintfA(string, "%-6d (0x%08X)", WindowLongA, WindowLongA);
@@ -257,21 +257,21 @@ static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
     LONG_PTR wndProc = GetWindowLongPtrA(app_state.hWnd, GWLP_WNDPROC);
     wsprintfA(string, "0x%IX", (SIZE_T)wndProc);
     SetDlgItemTextA(hDlg, IDC_WNDPROC, string);
-    RECT Rect;
-    GetWindowRect(app_state.hWnd, &Rect);
+    RECT rect;
+    GetWindowRect(app_state.hWnd, &rect);
     RECT rcDst;
-    CopyRect(&rcDst, &Rect);
-    if (Parent)
+    CopyRect(&rcDst, &rect);
+    if (parentId)
     {
-      ScreenToClient(Parent, (LPPOINT)&Rect);
-      ScreenToClient(Parent, (LPPOINT)&Rect.right);
+      ScreenToClient(parentId, (LPPOINT)&rect);
+      ScreenToClient(parentId, (LPPOINT)&rect.right);
       wsprintfA(
           string,
           "x:%4d y:%4d  w:%4d h:%4d",
-          Rect.left,
-          Rect.top,
-          Rect.right - Rect.left,
-          Rect.bottom - Rect.top);
+          rect.left,
+          rect.top,
+          rect.right - rect.left,
+          rect.bottom - rect.top);
       SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, string);
     }
     wsprintfA(
@@ -391,10 +391,10 @@ static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, 
 static void PositionWindowBottomRight(HWND hWnd)
 {
   RECT pvParam;
-  struct tagRECT Rect;
+  struct tagRECT rect;
   SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
-  GetWindowRect(hWnd, &Rect);
-  SetWindowPos(hWnd, nullptr, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
+  GetWindowRect(hWnd, &rect);
+  SetWindowPos(hWnd, nullptr, pvParam.right + rect.left - rect.right, pvParam.bottom + rect.top - rect.bottom, 0, 0, SWP_NOSIZE);
 }
 
 static bool IsDarkModeActive()
