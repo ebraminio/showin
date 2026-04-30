@@ -113,7 +113,7 @@ struct app_state_t
 
 private:
   HDC hdc;
-  HGDIOBJ hPen;
+  HPEN hPen;
   HMODULE dwmapi;
   struct Entry
   {
