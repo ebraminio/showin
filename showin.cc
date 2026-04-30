@@ -380,7 +380,6 @@ static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, 
   {
     HDC CompatibleDC = CreateCompatibleDC(destDC);
     SelectObject(CompatibleDC, app_state.hBannerBitmap);
-    RealizePalette(destDC);
     StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
                dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
                CompatibleDC, 0, 0, app_state.bannerBitmapWidth, app_state.bannerBitmapHeight, SRCCOPY);
@@ -512,8 +511,7 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   if (uMsg == WM_INITDIALOG)
   {
-    // app_state isn't ready on WM_INITDIALOG
-    SetWindowTextA(hDlg, "ShoWin");
+    // app_state isn't ready on WM_INITDIALOG, do the bare minimum here
     PositionWindowBottomRight(hDlg);
     return 1;
   }
