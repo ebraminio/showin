@@ -378,12 +378,12 @@ static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, 
   HDC destDC = dis->hDC;
   if (app_state.hBannerBitmap)
   {
-    HDC CompatibleDC = CreateCompatibleDC(destDC);
-    SelectObject(CompatibleDC, app_state.hBannerBitmap);
+    HDC compatibleDC = CreateCompatibleDC(destDC);
+    SelectObject(compatibleDC, app_state.hBannerBitmap);
     StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
                dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
-               CompatibleDC, 0, 0, app_state.bannerBitmapWidth, app_state.bannerBitmapHeight, SRCCOPY);
-    DeleteDC(CompatibleDC);
+               compatibleDC, 0, 0, app_state.bannerBitmapWidth, app_state.bannerBitmapHeight, SRCCOPY);
+    DeleteDC(compatibleDC);
   }
 }
 
