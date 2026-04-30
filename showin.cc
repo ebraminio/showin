@@ -67,7 +67,7 @@ struct app_state_t
   bool optToggleVisible;
   bool showHighlight;
   HDC hdc;
-  HGDIOBJ h;
+  HGDIOBJ hPen;
   HGDIOBJ hBannerBitmap;
   HGDIOBJ hBgBrush;
   HGDIOBJ hFontBold;
@@ -107,7 +107,7 @@ static void DrawHighlightRect(app_state_t &app_state, RECT *rect)
 {
   if (!app_state.showHighlight)
     return;
-  HGDIOBJ h = SelectObject(app_state.hdc, app_state.h);
+  HGDIOBJ h = SelectObject(app_state.hdc, app_state.hPen);
   int rop2 = SetROP2(app_state.hdc, R2_XORPEN);
   MoveToEx(app_state.hdc, rect->left - 1, rect->top - 1, nullptr);
   LineTo(app_state.hdc, rect->right, rect->top - 1);
@@ -140,7 +140,7 @@ static BOOL CleanupResources(app_state_t &app_state)
   DeleteObject(app_state.hFontBold);
   EraseHighlightRect(app_state);
   DeleteObject(app_state.hBgBrush);
-  DeleteObject(app_state.h);
+  DeleteObject(app_state.hPen);
   return DeleteDC(app_state.hdc);
 }
 
@@ -373,7 +373,7 @@ static void InitResources(app_state_t &app_state)
 {
   app_state.hdc = CreateDCA("DISPLAY", nullptr, nullptr, nullptr);
   DWORD SysColor = GetSysColor(COLOR_BTNSHADOW);
-  app_state.h = CreatePen(PS_DOT, 0, SysColor);
+  app_state.hPen = CreatePen(PS_DOT, 0, SysColor);
   DWORD btnFaceColor = GetSysColor(COLOR_BTNFACE);
   app_state.hBgBrush = CreateSolidBrush(btnFaceColor);
   app_state.hFontNormal = (HGDIOBJ)CreateCourierFont();
