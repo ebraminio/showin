@@ -100,7 +100,7 @@ struct app_state_t
     LoadBanner();
   }
 
-  BOOL CleanupResources()
+  void CleanupResources()
   {
     FreeLibrary(dwmapi);
     DeleteObject(hBannerBitmap);
@@ -110,14 +110,14 @@ struct app_state_t
     EraseHighlightRect();
     DeleteObject(hBgBrush);
     DeleteObject(hPen);
-    return DeleteDC(hdc);
+    DeleteDC(hdc);
   }
 
-  BOOL EraseHighlightRect()
+  void EraseHighlightRect()
   {
     if (!IsRectEmpty(&rc))
       DrawHighlightRect(&rc);
-    return SetRect(&rc, 0, 0, 0, 0);
+    SetRect(&rc, 0, 0, 0, 0);
   }
 
   void DrawHighlightRect(RECT *rect)
@@ -385,13 +385,13 @@ static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, 
   }
 }
 
-static BOOL PositionWindowBottomRight(HWND hWnd)
+static void PositionWindowBottomRight(HWND hWnd)
 {
   RECT pvParam;
   struct tagRECT Rect;
   SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
   GetWindowRect(hWnd, &Rect);
-  return SetWindowPos(hWnd, nullptr, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
+  SetWindowPos(hWnd, nullptr, pvParam.right + Rect.left - Rect.right, pvParam.bottom + Rect.top - Rect.bottom, 0, 0, SWP_NOSIZE);
 }
 
 static bool IsDarkModeActive()
@@ -500,9 +500,9 @@ static void ApplyDarkMode(app_state_t &app_state, HWND hDlg)
   InvalidateRect(hDlg, nullptr, TRUE);
 }
 
-static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
+static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
 {
-  return SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
+  SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
 }
 
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
