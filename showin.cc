@@ -70,8 +70,8 @@ struct app_state_t
   HGDIOBJ hPen;
   HGDIOBJ hBannerBitmap;
   HGDIOBJ hBgBrush;
-  HGDIOBJ hFontBold;
-  HGDIOBJ hFontNormal;
+  HGDIOBJ hSansSerifFont;
+  HGDIOBJ hMonospaceFont;
   HINSTANCE hInst;
   HMODULE dwmapi;
   HWND hWnd;
@@ -136,8 +136,8 @@ static BOOL CleanupResources(app_state_t &app_state)
   FreeLibrary(app_state.dwmapi);
   DeleteObject(app_state.hBannerBitmap);
   app_state.hBannerBitmap = nullptr;
-  DeleteObject(app_state.hFontNormal);
-  DeleteObject(app_state.hFontBold);
+  DeleteObject(app_state.hMonospaceFont);
+  DeleteObject(app_state.hSansSerifFont);
   EraseHighlightRect(app_state);
   DeleteObject(app_state.hBgBrush);
   DeleteObject(app_state.hPen);
@@ -341,7 +341,7 @@ static void LoadBanner(app_state_t &app_state)
   app_state.bannerBitmapHeight = pv.bmHeight;
 }
 
-static HFONT CreateCourierFont()
+static HFONT CreateMonospaceFont()
 {
   LOGFONTA lf;
   SecureZeroMemory(&lf, sizeof(LOGFONTA));
@@ -376,8 +376,8 @@ static void InitResources(app_state_t &app_state)
   app_state.hPen = CreatePen(PS_DOT, 0, SysColor);
   DWORD btnFaceColor = GetSysColor(COLOR_BTNFACE);
   app_state.hBgBrush = CreateSolidBrush(btnFaceColor);
-  app_state.hFontNormal = (HGDIOBJ)CreateCourierFont();
-  app_state.hFontBold = (HGDIOBJ)CreateSansSerifFont();
+  app_state.hMonospaceFont = (HGDIOBJ)CreateMonospaceFont();
+  app_state.hSansSerifFont = (HGDIOBJ)CreateSansSerifFont();
   app_state.pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(GetModuleHandleA("uxtheme.dll"), "SetWindowTheme");
   app_state.dwmapi = LoadLibraryA("dwmapi.dll");
   app_state.pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(app_state.dwmapi, "DwmSetWindowAttribute");
@@ -540,14 +540,14 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     app_state.origDlgProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
-    SetControlFont(hDlg, IDC_TITLE, app_state.hFontBold);
-    SetControlFont(hDlg, IDC_HANDLE, app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_PARENT, app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_OWNER, app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_WINDOWID, app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_CLIENT_COORDS, app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_WINDOW_COORDS, app_state.hFontNormal);
-    SetControlFont(hDlg, IDC_WNDPROC, app_state.hFontNormal);
+    SetControlFont(hDlg, IDC_TITLE, app_state.hSansSerifFont);
+    SetControlFont(hDlg, IDC_HANDLE, app_state.hMonospaceFont);
+    SetControlFont(hDlg, IDC_PARENT, app_state.hMonospaceFont);
+    SetControlFont(hDlg, IDC_OWNER, app_state.hMonospaceFont);
+    SetControlFont(hDlg, IDC_WINDOWID, app_state.hMonospaceFont);
+    SetControlFont(hDlg, IDC_CLIENT_COORDS, app_state.hMonospaceFont);
+    SetControlFont(hDlg, IDC_WINDOW_COORDS, app_state.hMonospaceFont);
+    SetControlFont(hDlg, IDC_WNDPROC, app_state.hMonospaceFont);
     HWND highlightCheckbox = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
     app_state.showHighlight = 1;
