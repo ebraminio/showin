@@ -244,19 +244,19 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     if (app_state.isDragging)
       return 0;
     RebuildWindowList(app_state);
-    app_state.lastHoveredHwnd = 0;
+    app_state.lastHoveredHwnd = nullptr;
     SetRect(&app_state.rc, 0, 0, 0, 0);
     SetCapture(hWnd);
     HCURSOR CursorA = LoadCursorA(app_state.hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
-    app_state.isDragging = 1;
+    app_state.isDragging = true;
     UpdateHover(app_state, hWnd, lParam);
     break;
   }
   case WM_LBUTTONUP:
     if (app_state.isDragging)
     {
-      app_state.isDragging = 0;
+      app_state.isDragging = false;
       EraseHighlightRect(app_state);
       ReleaseCapture();
       HCURSOR arrowCursor = LoadCursorA(nullptr, IDC_ARROW);
@@ -507,8 +507,12 @@ static LRESULT SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
 BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
   if (uMsg == WM_INITDIALOG)
-    // app_state isn't ready on init dialog, just skip
-    return 0;
+  {
+    // app_state isn't ready on WM_INITDIALOG
+    SetWindowTextA(hDlg, "ShoWin");
+    PositionWindowBottomRight(hDlg);
+    return 1;
+  }
   app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hDlg, GWLP_USERDATA);
   switch (uMsg)
   {
@@ -532,8 +536,6 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_SHOWWINDOW:
   {
     InitResources(app_state);
-    SetWindowTextA(hDlg, "ShoWin");
-    PositionWindowBottomRight(hDlg);
     ApplyDarkMode(app_state, hDlg);
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
     HICON IconA = LoadIconA(app_state.hInst, MAKEINTRESOURCEA(IDI_APP));
@@ -550,10 +552,10 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetControlFont(hDlg, IDC_WNDPROC, app_state.hMonospaceFont);
     HWND highlightCheckbox = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
-    app_state.showHighlight = 1;
-    app_state.lastHoveredHwnd = 0;
+    app_state.showHighlight = true;
+    app_state.lastHoveredHwnd = nullptr;
     app_state.hWnd = nullptr;
-    app_state.isDragging = 0;
+    app_state.isDragging = false;
     break;
   }
   case WM_COMMAND:
