@@ -4,53 +4,6 @@
 
 static const unsigned kWindowListCapacity = 8192;
 
-struct WindowList
-{
-  void Push(HWND hwnd, unsigned area)
-  {
-    if (count >= kWindowListCapacity)
-      return;
-    buf[count].hwnd = hwnd;
-    buf[count].area = area;
-    count++;
-  }
-
-  void Clear() { count = 0; }
-
-  void Sort()
-  {
-    // Originally it was using a quick sort, let's use a bubble sort!
-    for (unsigned i = 0; i < count - 1; ++i)
-      for (unsigned j = 0; j < count - 1 - i; ++j)
-        if (buf[j].area > buf[j + 1].area)
-        {
-          Entry tmp = buf[j];
-          buf[j] = buf[j + 1];
-          buf[j + 1] = tmp;
-        }
-  }
-
-  HWND HitHwnd(POINT pt)
-  {
-    struct tagRECT rect;
-    for (unsigned i = 0; i < count; ++i)
-    {
-      GetWindowRect(buf[i].hwnd, &rect);
-      if (PtInRect(&rect, pt))
-        return buf[i].hwnd;
-    }
-    return nullptr;
-  }
-
-private:
-  struct Entry
-  {
-    HWND hwnd;
-    unsigned area;
-  } buf[kWindowListCapacity];
-  unsigned count;
-};
-
 // https://web.archive.org/web/20190205041452/https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
@@ -80,7 +33,6 @@ struct app_state_t
   RECT rc;
   unsigned bannerBitmapHeight;
   unsigned bannerBitmapWidth;
-  WindowList windowList;
   WNDPROC origDlgProc;
   WNDPROC origGroupBoxProc;
 
@@ -142,15 +94,57 @@ struct app_state_t
 
   void RebuildWindowList()
   {
-    windowList.Clear();
+    ClearWindowList();
     EnumWindows(EnumFunc, (LPARAM)this);
-    windowList.Sort();
+    SortWindowList();
+  }
+
+  HWND FindWindow(POINT pt)
+  {
+    struct tagRECT rect;
+    for (unsigned i = 0; i < windowCount; ++i)
+    {
+      GetWindowRect(windowList[i].hwnd, &rect);
+      if (PtInRect(&rect, pt))
+        return windowList[i].hwnd;
+    }
+    return nullptr;
   }
 
 private:
   HDC hdc;
   HGDIOBJ hPen;
   HMODULE dwmapi;
+  struct Entry
+  {
+    HWND hwnd;
+    unsigned area;
+  } windowList[kWindowListCapacity];
+  unsigned windowCount;
+
+  void ClearWindowList() { windowCount = 0; }
+
+  void SortWindowList()
+  {
+    // Originally it was using a quick sort, let's use a bubble sort!
+    for (unsigned i = 0; i < windowCount - 1; ++i)
+      for (unsigned j = 0; j < windowCount - 1 - i; ++j)
+        if (windowList[j].area > windowList[j + 1].area)
+        {
+          Entry tmp = windowList[j];
+          windowList[j] = windowList[j + 1];
+          windowList[j + 1] = tmp;
+        }
+  }
+
+  void InsertWindowIntoList(HWND hwnd, unsigned area)
+  {
+    if (windowCount >= kWindowListCapacity)
+      return;
+    windowList[windowCount].hwnd = hwnd;
+    windowList[windowCount].area = area;
+    windowCount++;
+  }
 
   void LoadBanner()
   {
@@ -207,7 +201,7 @@ private:
       struct tagRECT rect;
       GetWindowRect(hWnd, &rect);
       if (!IsRectEmpty(&rect))
-        app_state.windowList.Push(hWnd, (rect.right - rect.left) * (rect.bottom - rect.top));
+        app_state.InsertWindowIntoList(hWnd, (rect.right - rect.left) * (rect.bottom - rect.top));
       EnumChildWindows(hWnd, EnumFunc, (LPARAM)&app_state);
     }
     return 1;
@@ -234,7 +228,7 @@ static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
   SetDlgItemTextA(hDlg, IDC_MOUSE_X, string);
   wsprintfA(string, "%4hd", pt.y);
   SetDlgItemTextA(hDlg, IDC_MOUSE_Y, string);
-  HWND hitHwnd = app_state.windowList.HitHwnd(pt);
+  HWND hitHwnd = app_state.FindWindow(pt);
   app_state.hWnd = hitHwnd;
   if (hitHwnd && hitHwnd != app_state.lastHoveredHwnd)
   {
