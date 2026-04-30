@@ -51,6 +51,9 @@ private:
   unsigned count;
 };
 
+// https://web.archive.org/web/20190205041452/https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+
 typedef HRESULT(WINAPI *PFN_SetWindowTheme)(HWND, LPCWSTR, LPCWSTR);
 typedef HRESULT(WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
 
@@ -66,14 +69,10 @@ struct app_state_t
   bool optToggleEnabled;
   bool optToggleVisible;
   bool showHighlight;
-  HDC hdc;
-  HGDIOBJ hPen;
   HGDIOBJ hBannerBitmap;
   HGDIOBJ hBgBrush;
   HGDIOBJ hSansSerifFont;
   HGDIOBJ hMonospaceFont;
-  HINSTANCE hInst;
-  HMODULE dwmapi;
   HWND hWnd;
   HWND lastHoveredHwnd;
   PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
@@ -149,8 +148,13 @@ struct app_state_t
   }
 
 private:
+  HDC hdc;
+  HGDIOBJ hPen;
+  HMODULE dwmapi;
+
   void LoadBanner()
   {
+    HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
     hBannerBitmap = LoadImageA(hInst, MAKEINTRESOURCEA(IDB_BANNER), IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION | LR_DEFAULTSIZE);
     if (!hBannerBitmap)
       return;
@@ -163,8 +167,7 @@ private:
   UINT GetSystemDpi()
   {
     typedef UINT(WINAPI * PFN)();
-    PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
-                                  "GetDpiForSystem");
+    PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"), "GetDpiForSystem");
     return pfn ? pfn() : 96;
   }
 
@@ -214,8 +217,7 @@ private:
 static void TryEnableDpiAwareness()
 {
   typedef BOOL(WINAPI * PFN)(HANDLE);
-  PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"),
-                                "SetProcessDpiAwarenessContext");
+  PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"), "SetProcessDpiAwarenessContext");
   if (pfn)
     pfn((HANDLE)(LONG_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
 }
@@ -302,7 +304,8 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     app_state.lastHoveredHwnd = nullptr;
     SetRect(&app_state.rc, 0, 0, 0, 0);
     SetCapture(hWnd);
-    HCURSOR CursorA = LoadCursorA(app_state.hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
+    HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
+    HCURSOR CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
     app_state.isDragging = true;
     UpdateHover(app_state, hWnd, lParam);
@@ -539,7 +542,8 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     app_state.InitResources();
     ApplyDarkMode(app_state, hDlg);
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
-    HICON IconA = LoadIconA(app_state.hInst, MAKEINTRESOURCEA(IDI_APP));
+    HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
+    HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     app_state.origDlgProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
@@ -662,16 +666,13 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   return 1;
 }
 
-// https://web.archive.org/web/20190205041452/https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
-extern "C" IMAGE_DOS_HEADER __ImageBase;
-
 extern "C" void start()
 {
   app_state_t state;
   SecureZeroMemory(&state, sizeof(app_state_t));
   TryEnableDpiAwareness();
-  state.hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
-  HWND hwnd = CreateDialogParamA(state.hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
+  HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
+  HWND hwnd = CreateDialogParamA(hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
   SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
   ShowWindow(hwnd, SW_SHOW);
   MSG msg;
