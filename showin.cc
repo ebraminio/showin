@@ -73,6 +73,7 @@ struct app_state_t
   HGDIOBJ hFontBold;
   HGDIOBJ hFontNormal;
   HINSTANCE hInst;
+  HMODULE dwmapi;
   HWND hWnd;
   HWND lastHoveredHwnd;
   PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
@@ -132,6 +133,7 @@ static BOOL EraseHighlightRect(app_state_t &app_state)
 
 static BOOL CleanupResources(app_state_t &app_state)
 {
+  FreeLibrary(app_state.dwmapi);
   DeleteObject(app_state.hBannerBitmap);
   app_state.hBannerBitmap = nullptr;
   DeleteObject(app_state.hFontNormal);
@@ -377,7 +379,8 @@ static void InitResources(app_state_t &app_state)
   app_state.hFontNormal = (HGDIOBJ)CreateCourierFont();
   app_state.hFontBold = (HGDIOBJ)CreateSansSerifFont();
   app_state.pfnSetWindowTheme = (PFN_SetWindowTheme)GetProcAddress(GetModuleHandleA("uxtheme.dll"), "SetWindowTheme");
-  app_state.pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(GetModuleHandleA("dwmapi.dll"), "DwmSetWindowAttribute");
+  app_state.dwmapi = LoadLibraryA("dwmapi.dll");
+  app_state.pfnDwmSetWindowAttribute = (PFN_DwmSetWindowAttribute)GetProcAddress(app_state.dwmapi, "DwmSetWindowAttribute");
   LoadBanner(app_state);
 }
 
