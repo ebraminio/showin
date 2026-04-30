@@ -507,16 +507,16 @@ static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
   SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
 }
 
-BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-  if (uMsg == WM_INITDIALOG)
+  if (msg == WM_INITDIALOG)
   {
     // app_state isn't ready on WM_INITDIALOG, do the bare minimum here
     PositionWindowBottomRight(hDlg);
     return 1;
   }
   app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hDlg, GWLP_USERDATA);
-  switch (uMsg)
+  switch (msg)
   {
   case WM_ACTIVATE:
     if (!(WORD)wParam)
@@ -636,13 +636,13 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_CTLCOLORDLG:
   {
     SetBkColor((HDC)wParam, app_state.darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
-    return (BOOL)(LONG_PTR)app_state.hBgBrush;
+    return (LRESULT)app_state.hBgBrush;
   }
   case WM_CTLCOLORBTN:
   {
     SetTextColor((HDC)wParam, app_state.darkMode ? RGB(242, 242, 242) : GetSysColor(COLOR_BTNTEXT));
     SetBkColor((HDC)wParam, app_state.darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
-    return (BOOL)(LONG_PTR)app_state.hBgBrush;
+    return (LRESULT)app_state.hBgBrush;
   }
   case WM_CTLCOLORSTATIC:
   {
@@ -652,11 +652,11 @@ BOOL CALLBACK DialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
       SetTextColor((HDC)wParam, app_state.darkMode ? RGB(100, 163, 212) : RGB(0, 0, 0xC0));
       SetBkColor((HDC)wParam, bg);
-      return (BOOL)(LONG_PTR)app_state.hBgBrush;
+      return (LRESULT)app_state.hBgBrush;
     }
     SetTextColor((HDC)wParam, app_state.darkMode ? RGB(242, 242, 242) : GetSysColor(COLOR_BTNTEXT));
     SetBkColor((HDC)wParam, bg);
-    return (BOOL)(LONG_PTR)app_state.hBgBrush;
+    return (LRESULT)app_state.hBgBrush;
   }
   default:
     return 0;
