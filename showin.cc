@@ -33,7 +33,7 @@ struct app_state_t
   RECT rc;
   unsigned bannerBitmapHeight;
   unsigned bannerBitmapWidth;
-  WNDPROC dialogProc;
+  WNDPROC mainDialogProc;
   WNDPROC origGroupBoxProc;
 
   void InitResources()
@@ -364,7 +364,7 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
     }
     return 0;
   }
-  return CallWindowProcA(app_state.dialogProc, hWnd, msg, wParam, lParam);
+  return CallWindowProcA(app_state.mainDialogProc, hWnd, msg, wParam, lParam);
 }
 
 static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
@@ -537,7 +537,7 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
     HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
-    app_state.dialogProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
+    app_state.mainDialogProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
     SetControlFont(hDlg, IDC_TITLE, app_state.hSansSerifFont);
     SetControlFont(hDlg, IDC_HANDLE, app_state.hMonospaceFont);
