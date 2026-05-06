@@ -101,7 +101,7 @@ struct app_state_t
 
   HWND FindWindow(POINT pt)
   {
-    struct tagRECT rect;
+    RECT rect;
     for (unsigned i = 0; i < windowCount; ++i)
     {
       GetWindowRect(windowList[i].hwnd, &rect);
@@ -252,7 +252,7 @@ private:
     app_state_t &app_state = *(app_state_t *)lParam;
     if (app_state.optIncludeHidden || IsWindowVisible(hWnd))
     {
-      struct tagRECT rect;
+      RECT rect;
       GetWindowRect(hWnd, &rect);
       if (!IsRectEmpty(&rect))
         app_state.InsertWindowIntoList(hWnd, (rect.right - rect.left) * (rect.bottom - rect.top));
@@ -647,7 +647,7 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
 static void PositionWindowBottomRight(HWND hWnd)
 {
   RECT pvParam;
-  struct tagRECT rect;
+  RECT rect;
   SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
   GetWindowRect(hWnd, &rect);
   SetWindowPos(hWnd, nullptr, pvParam.right + rect.left - rect.right, pvParam.bottom + rect.top - rect.bottom, 0, 0, SWP_NOSIZE);
