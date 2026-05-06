@@ -479,11 +479,6 @@ static LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
   return CallWindowProcA(app_state.origDragButtonProc, hWnd, msg, wParam, lParam);
 }
 
-static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
-{
-  SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
-}
-
 static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   if (msg == WM_INITDIALOG)
@@ -517,14 +512,6 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     app_state.origDragButtonProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
-    SetControlFont(hDlg, IDC_TITLE, app_state.hSansSerifFont);
-    SetControlFont(hDlg, IDC_HANDLE, app_state.hMonospaceFont);
-    SetControlFont(hDlg, IDC_PARENT, app_state.hMonospaceFont);
-    SetControlFont(hDlg, IDC_OWNER, app_state.hMonospaceFont);
-    SetControlFont(hDlg, IDC_WINDOWID, app_state.hMonospaceFont);
-    SetControlFont(hDlg, IDC_CLIENT_COORDS, app_state.hMonospaceFont);
-    SetControlFont(hDlg, IDC_WINDOW_COORDS, app_state.hMonospaceFont);
-    SetControlFont(hDlg, IDC_WNDPROC, app_state.hMonospaceFont);
     HWND highlightCheckbox = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
     app_state.showHighlight = true;
@@ -656,6 +643,11 @@ static void TryEnableDpiAwareness()
     pfn((HANDLE)(LONG_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
 }
 
+static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
+{
+  SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
+}
+
 extern "C" void start()
 {
   TryEnableDpiAwareness();
@@ -664,6 +656,14 @@ extern "C" void start()
   PositionWindowBottomRight(hwnd);
   app_state_t state;
   SecureZeroMemory(&state, sizeof(app_state_t));
+  SetControlFont(hwnd, IDC_TITLE, state.hSansSerifFont);
+  SetControlFont(hwnd, IDC_HANDLE, state.hMonospaceFont);
+  SetControlFont(hwnd, IDC_PARENT, state.hMonospaceFont);
+  SetControlFont(hwnd, IDC_OWNER, state.hMonospaceFont);
+  SetControlFont(hwnd, IDC_WINDOWID, state.hMonospaceFont);
+  SetControlFont(hwnd, IDC_CLIENT_COORDS, state.hMonospaceFont);
+  SetControlFont(hwnd, IDC_WINDOW_COORDS, state.hMonospaceFont);
+  SetControlFont(hwnd, IDC_WNDPROC, state.hMonospaceFont);
   state.InitResources();
   state.ApplyDarkMode(hwnd);
   SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
