@@ -22,17 +22,12 @@ struct app_state_t
   bool optToggleEnabled;
   bool optToggleVisible;
   bool showHighlight;
-  HGDIOBJ hBannerBitmap;
   HGDIOBJ hBgBrush;
   HGDIOBJ hSansSerifFont;
   HGDIOBJ hMonospaceFont;
   HWND hWnd;
   HWND lastHoveredHwnd;
-  PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
-  PFN_SetWindowTheme pfnSetWindowTheme;
   RECT rc;
-  unsigned bannerBitmapHeight;
-  unsigned bannerBitmapWidth;
   WNDPROC origDragButtonProc;
   WNDPROC origGroupBoxProc;
 
@@ -99,18 +94,6 @@ struct app_state_t
     SortWindowList();
   }
 
-  HWND FindWindow(POINT pt)
-  {
-    RECT rect;
-    for (unsigned i = 0; i < windowCount; ++i)
-    {
-      GetWindowRect(windowList[i].hwnd, &rect);
-      if (PtInRect(&rect, pt))
-        return windowList[i].hwnd;
-    }
-    return nullptr;
-  }
-
   void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
   {
     HDC destDC = dis->hDC;
@@ -123,32 +106,6 @@ struct app_state_t
                  compatibleDC, 0, 0, bannerBitmapWidth, bannerBitmapHeight, SRCCOPY);
       DeleteDC(compatibleDC);
     }
-  }
-
-  static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM lParam)
-  {
-    app_state_t &app_state = *(app_state_t *)lParam;
-    CHAR cls[64];
-    GetClassNameA(hwnd, cls, sizeof(cls));
-    if (lstrcmpiA(cls, "Button") == 0)
-    {
-      DWORD style = (DWORD)GetWindowLongA(hwnd, GWL_STYLE) & 0x0F;
-      if (style == BS_GROUPBOX)
-      {
-        /* Subclass once for custom dark WM_PAINT; no theme override needed */
-        WNDPROC cur = (WNDPROC)GetWindowLongPtrA(hwnd, GWLP_WNDPROC);
-        if (cur != GroupBoxWndProc)
-        {
-          if (!app_state.origGroupBoxProc)
-            app_state.origGroupBoxProc = cur;
-          SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
-          SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&app_state);
-        }
-      }
-      else if (app_state.pfnSetWindowTheme)
-        app_state.pfnSetWindowTheme(hwnd, app_state.darkMode ? L"DarkMode_Explorer" : L"", nullptr);
-    }
-    return TRUE;
   }
 
   void ApplyDarkMode(HWND hDlg)
@@ -165,10 +122,80 @@ struct app_state_t
     InvalidateRect(hDlg, nullptr, TRUE);
   }
 
+  void UpdateHover(HWND hWnd, LPARAM lParam)
+  {
+    POINT pt;
+    pt.x = (__int16)lParam;
+    pt.y = (short)HIWORD(lParam);
+    ClientToScreen(hWnd, &pt);
+    HWND hDlg = GetParent(hWnd);
+    CHAR string[256];
+    wsprintfA(string, "%4hd", pt.x);
+    SetDlgItemTextA(hDlg, IDC_MOUSE_X, string);
+    wsprintfA(string, "%4hd", pt.y);
+    SetDlgItemTextA(hDlg, IDC_MOUSE_Y, string);
+    HWND hitHwnd = FindWindow(pt);
+    hWnd = hitHwnd;
+    if (hitHwnd && hitHwnd != lastHoveredHwnd)
+    {
+      lastHoveredHwnd = hitHwnd;
+      SendMessageA(hitHwnd, WM_GETTEXT, 256, (LPARAM)string);
+      SetDlgItemTextA(hDlg, IDC_TITLE, string);
+      GetClassNameA(hWnd, string, 256);
+      SetDlgItemTextA(hDlg, IDC_CLASSNAME, string);
+      wsprintfA(string, "%-6d (0x%08X)", hWnd, hWnd);
+      SetDlgItemTextA(hDlg, IDC_HANDLE, string);
+      HWND parentId = GetParent(hWnd);
+      wsprintfA(string, "%-6d (0x%08X)", parentId, parentId);
+      SetDlgItemTextA(hDlg, IDC_PARENT, string);
+      HWND windowId = GetWindow(hWnd, GW_OWNER);
+      wsprintfA(string, "%-6d (0x%08X)", windowId, windowId);
+      SetDlgItemTextA(hDlg, IDC_OWNER, string);
+      LONG windowLongA = GetWindowLongA(hWnd, GWL_ID);
+      wsprintfA(string, "%-6d (0x%08X)", windowLongA, windowLongA);
+      SetDlgItemTextA(hDlg, IDC_WINDOWID, string);
+      LONG_PTR wndProc = GetWindowLongPtrA(hWnd, GWLP_WNDPROC);
+      wsprintfA(string, "0x%IX", (SIZE_T)wndProc);
+      SetDlgItemTextA(hDlg, IDC_WNDPROC, string);
+      RECT rect;
+      GetWindowRect(hWnd, &rect);
+      RECT rcDst;
+      CopyRect(&rcDst, &rect);
+      if (parentId)
+      {
+        ScreenToClient(parentId, (LPPOINT)&rect);
+        ScreenToClient(parentId, (LPPOINT)&rect.right);
+        wsprintfA(
+            string,
+            "x:%4d y:%4d  w:%4d h:%4d",
+            rect.left,
+            rect.top,
+            rect.right - rect.left,
+            rect.bottom - rect.top);
+        SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, string);
+      }
+      wsprintfA(
+          string,
+          "x:%4d y:%4d  w:%4d h:%4d",
+          rcDst.left,
+          rcDst.top,
+          rcDst.right - rcDst.left,
+          rcDst.bottom - rcDst.top);
+      SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, string);
+      EraseHighlightRect();
+      DrawHighlightRect(&rcDst);
+    }
+  }
+
 private:
   HDC hdc;
   HPEN hPen;
+  HGDIOBJ hBannerBitmap;
   HMODULE dwmapi;
+  PFN_DwmSetWindowAttribute pfnDwmSetWindowAttribute;
+  PFN_SetWindowTheme pfnSetWindowTheme;
+  unsigned bannerBitmapHeight;
+  unsigned bannerBitmapWidth;
   struct Entry
   {
     HWND hwnd;
@@ -210,6 +237,44 @@ private:
     GetObjectA(hBannerBitmap, sizeof(BITMAP), &pv);
     bannerBitmapWidth = pv.bmWidth;
     bannerBitmapHeight = pv.bmHeight;
+  }
+
+  HWND FindWindow(POINT pt)
+  {
+    RECT rect;
+    for (unsigned i = 0; i < windowCount; ++i)
+    {
+      GetWindowRect(windowList[i].hwnd, &rect);
+      if (PtInRect(&rect, pt))
+        return windowList[i].hwnd;
+    }
+    return nullptr;
+  }
+
+  static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM lParam)
+  {
+    app_state_t &app_state = *(app_state_t *)lParam;
+    CHAR cls[64];
+    GetClassNameA(hwnd, cls, sizeof(cls));
+    if (lstrcmpiA(cls, "Button") == 0)
+    {
+      DWORD style = (DWORD)GetWindowLongA(hwnd, GWL_STYLE) & 0x0F;
+      if (style == BS_GROUPBOX)
+      {
+        /* Subclass once for custom dark WM_PAINT; no theme override needed */
+        WNDPROC cur = (WNDPROC)GetWindowLongPtrA(hwnd, GWLP_WNDPROC);
+        if (cur != GroupBoxWndProc)
+        {
+          if (!app_state.origGroupBoxProc)
+            app_state.origGroupBoxProc = cur;
+          SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
+          SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&app_state);
+        }
+      }
+      else if (app_state.pfnSetWindowTheme)
+        app_state.pfnSetWindowTheme(hwnd, app_state.darkMode ? L"DarkMode_Explorer" : L"", nullptr);
+    }
+    return TRUE;
   }
 
   static UINT GetSystemDpi()
@@ -328,71 +393,6 @@ private:
   }
 };
 
-static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
-{
-  POINT pt;
-  pt.x = (__int16)lParam;
-  pt.y = (short)HIWORD(lParam);
-  ClientToScreen(hWnd, &pt);
-  HWND hDlg = GetParent(hWnd);
-  CHAR string[256];
-  wsprintfA(string, "%4hd", pt.x);
-  SetDlgItemTextA(hDlg, IDC_MOUSE_X, string);
-  wsprintfA(string, "%4hd", pt.y);
-  SetDlgItemTextA(hDlg, IDC_MOUSE_Y, string);
-  HWND hitHwnd = app_state.FindWindow(pt);
-  app_state.hWnd = hitHwnd;
-  if (hitHwnd && hitHwnd != app_state.lastHoveredHwnd)
-  {
-    app_state.lastHoveredHwnd = hitHwnd;
-    SendMessageA(hitHwnd, WM_GETTEXT, 256, (LPARAM)string);
-    SetDlgItemTextA(hDlg, IDC_TITLE, string);
-    GetClassNameA(app_state.hWnd, string, 256);
-    SetDlgItemTextA(hDlg, IDC_CLASSNAME, string);
-    wsprintfA(string, "%-6d (0x%08X)", app_state.hWnd, app_state.hWnd);
-    SetDlgItemTextA(hDlg, IDC_HANDLE, string);
-    HWND parentId = GetParent(app_state.hWnd);
-    wsprintfA(string, "%-6d (0x%08X)", parentId, parentId);
-    SetDlgItemTextA(hDlg, IDC_PARENT, string);
-    HWND windowId = GetWindow(app_state.hWnd, GW_OWNER);
-    wsprintfA(string, "%-6d (0x%08X)", windowId, windowId);
-    SetDlgItemTextA(hDlg, IDC_OWNER, string);
-    LONG WindowLongA = GetWindowLongA(app_state.hWnd, GWL_ID);
-    wsprintfA(string, "%-6d (0x%08X)", WindowLongA, WindowLongA);
-    SetDlgItemTextA(hDlg, IDC_WINDOWID, string);
-    LONG_PTR wndProc = GetWindowLongPtrA(app_state.hWnd, GWLP_WNDPROC);
-    wsprintfA(string, "0x%IX", (SIZE_T)wndProc);
-    SetDlgItemTextA(hDlg, IDC_WNDPROC, string);
-    RECT rect;
-    GetWindowRect(app_state.hWnd, &rect);
-    RECT rcDst;
-    CopyRect(&rcDst, &rect);
-    if (parentId)
-    {
-      ScreenToClient(parentId, (LPPOINT)&rect);
-      ScreenToClient(parentId, (LPPOINT)&rect.right);
-      wsprintfA(
-          string,
-          "x:%4d y:%4d  w:%4d h:%4d",
-          rect.left,
-          rect.top,
-          rect.right - rect.left,
-          rect.bottom - rect.top);
-      SetDlgItemTextA(hDlg, IDC_CLIENT_COORDS, string);
-    }
-    wsprintfA(
-        string,
-        "x:%4d y:%4d  w:%4d h:%4d",
-        rcDst.left,
-        rcDst.top,
-        rcDst.right - rcDst.left,
-        rcDst.bottom - rcDst.top);
-    SetDlgItemTextA(hDlg, IDC_WINDOW_COORDS, string);
-    app_state.EraseHighlightRect();
-    app_state.DrawHighlightRect(&rcDst);
-  }
-}
-
 static LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
@@ -400,7 +400,7 @@ static LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
   {
   case WM_MOUSEMOVE:
     if (app_state.isDragging)
-      UpdateHover(app_state, hWnd, lParam);
+      app_state.UpdateHover(hWnd, lParam);
     break;
   case WM_LBUTTONDOWN:
   {
@@ -414,7 +414,7 @@ static LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
     HCURSOR CursorA = LoadCursorA(hInst, MAKEINTRESOURCEA(IDC_CROSSHAIR));
     SetCursor(CursorA);
     app_state.isDragging = true;
-    UpdateHover(app_state, hWnd, lParam);
+    app_state.UpdateHover(hWnd, lParam);
     break;
   }
   case WM_LBUTTONUP:
