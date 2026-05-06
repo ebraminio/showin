@@ -490,8 +490,8 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
   case WM_ACTIVATE:
     if (!(WORD)wParam)
     {
-      HWND DlgItem = GetDlgItem(hDlg, IDC_DRAG_BTN);
-      SendMessageA(DlgItem, WM_LBUTTONUP, 0, 0);
+      HWND dragButton = GetDlgItem(hDlg, IDC_DRAG_BTN);
+      SendMessageA(dragButton, WM_LBUTTONUP, 0, 0);
     }
     break;
   case WM_CLOSE:
@@ -506,12 +506,11 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     break;
   case WM_SHOWWINDOW:
   {
-    HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
+    HWND dragButton = GetDlgItem(hDlg, IDC_DRAG_BTN);
     HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
-    HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
-    SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
-    app_state.origDragButtonProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
-    SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
+    SendMessageA(dragButton, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP)));
+    app_state.origDragButtonProc = (WNDPROC)SetWindowLongPtrA(dragButton, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
+    SetWindowLongPtrA(dragButton, GWLP_USERDATA, (LPARAM)&app_state);
     break;
   }
   case WM_COMMAND:
