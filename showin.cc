@@ -7,9 +7,6 @@ static const unsigned kWindowListCapacity = 8192;
 // https://web.archive.org/web/20190205041452/https://blogs.msdn.microsoft.com/oldnewthing/20041025-00/?p=37483
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
-typedef HRESULT(WINAPI *PFN_SetWindowTheme)(HWND, LPCWSTR, LPCWSTR);
-typedef HRESULT(WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
-
 struct app_state_t
 {
   bool darkMode;
@@ -30,6 +27,9 @@ struct app_state_t
   RECT rc;
   WNDPROC origDragButtonProc;
   WNDPROC origGroupBoxProc;
+
+  typedef HRESULT(WINAPI *PFN_SetWindowTheme)(HWND, LPCWSTR, LPCWSTR);
+  typedef HRESULT(WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
 
   void InitResources()
   {
