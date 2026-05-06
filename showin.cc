@@ -528,9 +528,6 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     HWND highlightCheckbox = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
     SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
     app_state.showHighlight = true;
-    app_state.lastHoveredHwnd = nullptr;
-    app_state.hWnd = nullptr;
-    app_state.isDragging = false;
     break;
   }
   case WM_COMMAND:
