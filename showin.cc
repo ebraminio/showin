@@ -512,9 +512,6 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     SendMessageA(hDlga, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IconA);
     app_state.origDragButtonProc = (WNDPROC)SetWindowLongPtrA(hDlga, GWLP_WNDPROC, (LONG_PTR)CrosshairWndProc);
     SetWindowLongPtrA(hDlga, GWLP_USERDATA, (LPARAM)&app_state);
-    HWND highlightCheckbox = GetDlgItem(hDlg, IDC_OPT_HIGHLIGHT);
-    SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
-    app_state.showHighlight = true;
     break;
   }
   case WM_COMMAND:
@@ -656,6 +653,7 @@ extern "C" void start()
   PositionWindowBottomRight(hwnd);
   app_state_t state;
   SecureZeroMemory(&state, sizeof(app_state_t));
+  state.InitResources();
   SetControlFont(hwnd, IDC_TITLE, state.hSansSerifFont);
   SetControlFont(hwnd, IDC_HANDLE, state.hMonospaceFont);
   SetControlFont(hwnd, IDC_PARENT, state.hMonospaceFont);
@@ -664,7 +662,9 @@ extern "C" void start()
   SetControlFont(hwnd, IDC_CLIENT_COORDS, state.hMonospaceFont);
   SetControlFont(hwnd, IDC_WINDOW_COORDS, state.hMonospaceFont);
   SetControlFont(hwnd, IDC_WNDPROC, state.hMonospaceFont);
-  state.InitResources();
+  HWND highlightCheckbox = GetDlgItem(hwnd, IDC_OPT_HIGHLIGHT);
+  SendMessageA(highlightCheckbox, BM_SETCHECK, BST_CHECKED, 0);
+  state.showHighlight = true;
   state.ApplyDarkMode(hwnd);
   SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
   ShowWindow(hwnd, SW_SHOW);
