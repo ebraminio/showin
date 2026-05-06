@@ -10,6 +10,6 @@ target("showin", function()
         add_cxxflags("-fno-rtti", "-fno-threadsafe-statics", {force = true})
     elseif is_plat("windows") then
         add_ldflags("/SUBSYSTEM:WINDOWS", "/entry:start", {force = true})
-        add_cxxflags("/GR-", "/Zc:threadSafeInit-", {force = true})
+        add_cxxflags("/GR-", "/GS-", "/Zc:threadSafeInit-", {force = true})
     end
 end)
