@@ -504,11 +504,8 @@ static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
 static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   if (msg == WM_INITDIALOG)
-  {
-    // app_state isn't ready on WM_INITDIALOG, do the bare minimum here
-    PositionWindowBottomRight(hDlg);
+    // app_state isn't ready on WM_INITDIALOG
     return 1;
-  }
   app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hDlg, GWLP_USERDATA);
   switch (msg)
   {
@@ -665,6 +662,7 @@ extern "C" void start()
   TryEnableDpiAwareness();
   HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
   HWND hwnd = CreateDialogParamA(hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
+  PositionWindowBottomRight(hwnd);
   SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
   ShowWindow(hwnd, SW_SHOW);
   MSG msg;
