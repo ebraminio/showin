@@ -633,10 +633,10 @@ static void PositionWindowBottomRight(HWND hWnd)
 
 static void TryEnableDpiAwareness()
 {
-  typedef BOOL(WINAPI * PFN)(INT);
+  typedef BOOL(WINAPI * PFN)(INT_PTR);
   PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"), "SetProcessDpiAwarenessContext");
   if (pfn)
-    pfn(-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
+    pfn((INT_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
 }
 
 static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
