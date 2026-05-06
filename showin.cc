@@ -615,16 +615,22 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
   }
   case WM_CTLCOLORSTATIC:
   {
-    LONG WindowLongA = GetWindowLongA((HWND)lParam, GWL_ID);
-    COLORREF bg = app_state.darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE);
-    if (WindowLongA == IDC_CLASSNAME || WindowLongA == IDC_HANDLE || WindowLongA == IDC_PARENT || WindowLongA == IDC_OWNER || WindowLongA == IDC_WINDOWID || WindowLongA == IDC_CLIENT_COORDS || WindowLongA == IDC_WINDOW_COORDS || WindowLongA == IDC_WNDPROC)
+    switch (GetWindowLongA((HWND)lParam, GWL_ID))
     {
+    case IDC_CLASSNAME:
+    case IDC_HANDLE:
+    case IDC_PARENT:
+    case IDC_OWNER:
+    case IDC_WINDOWID:
+    case IDC_CLIENT_COORDS:
+    case IDC_WINDOW_COORDS:
+    case IDC_WNDPROC:
       SetTextColor((HDC)wParam, app_state.darkMode ? RGB(100, 163, 212) : RGB(0, 0, 0xC0));
-      SetBkColor((HDC)wParam, bg);
-      return (LRESULT)app_state.hBgBrush;
+      break;
+    default:
+      SetTextColor((HDC)wParam, app_state.darkMode ? RGB(242, 242, 242) : GetSysColor(COLOR_BTNTEXT));
     }
-    SetTextColor((HDC)wParam, app_state.darkMode ? RGB(242, 242, 242) : GetSysColor(COLOR_BTNTEXT));
-    SetBkColor((HDC)wParam, bg);
+    SetBkColor((HDC)wParam, app_state.darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
     return (LRESULT)app_state.hBgBrush;
   }
   default:
