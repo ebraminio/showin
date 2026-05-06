@@ -328,14 +328,6 @@ private:
   }
 };
 
-static void TryEnableDpiAwareness()
-{
-  typedef BOOL(WINAPI * PFN)(HANDLE);
-  PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"), "SetProcessDpiAwarenessContext");
-  if (pfn)
-    pfn((HANDLE)(LONG_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
-}
-
 static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
 {
   POINT pt;
@@ -401,7 +393,7 @@ static void UpdateHover(app_state_t &app_state, HWND hWnd, LPARAM lParam)
   }
 }
 
-LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
   app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hWnd, GWLP_USERDATA);
   switch (msg)
@@ -651,6 +643,14 @@ static void PositionWindowBottomRight(HWND hWnd)
   SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
   GetWindowRect(hWnd, &rect);
   SetWindowPos(hWnd, nullptr, pvParam.right + rect.left - rect.right, pvParam.bottom + rect.top - rect.bottom, 0, 0, SWP_NOSIZE);
+}
+
+static void TryEnableDpiAwareness()
+{
+  typedef BOOL(WINAPI * PFN)(HANDLE);
+  PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"), "SetProcessDpiAwarenessContext");
+  if (pfn)
+    pfn((HANDLE)(LONG_PTR)-2); /* DPI_AWARENESS_CONTEXT_SYSTEM_AWARE */
 }
 
 extern "C" void start()
