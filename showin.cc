@@ -111,6 +111,60 @@ struct app_state_t
     return nullptr;
   }
 
+  void DrawBitmapPreview(HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
+  {
+    HDC destDC = dis->hDC;
+    if (hBannerBitmap)
+    {
+      HDC compatibleDC = CreateCompatibleDC(destDC);
+      SelectObject(compatibleDC, hBannerBitmap);
+      StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
+                 dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
+                 compatibleDC, 0, 0, bannerBitmapWidth, bannerBitmapHeight, SRCCOPY);
+      DeleteDC(compatibleDC);
+    }
+  }
+
+  static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM lParam)
+  {
+    app_state_t &app_state = *(app_state_t *)lParam;
+    CHAR cls[64];
+    GetClassNameA(hwnd, cls, sizeof(cls));
+    if (lstrcmpiA(cls, "Button") == 0)
+    {
+      DWORD style = (DWORD)GetWindowLongA(hwnd, GWL_STYLE) & 0x0F;
+      if (style == BS_GROUPBOX)
+      {
+        /* Subclass once for custom dark WM_PAINT; no theme override needed */
+        WNDPROC cur = (WNDPROC)GetWindowLongPtrA(hwnd, GWLP_WNDPROC);
+        if (cur != GroupBoxWndProc)
+        {
+          if (!app_state.origGroupBoxProc)
+            app_state.origGroupBoxProc = cur;
+          SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
+          SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&app_state);
+        }
+      }
+      else if (app_state.pfnSetWindowTheme)
+        app_state.pfnSetWindowTheme(hwnd, app_state.darkMode ? L"DarkMode_Explorer" : L"", nullptr);
+    }
+    return TRUE;
+  }
+
+  void ApplyDarkMode(HWND hDlg)
+  {
+    darkMode = IsDarkModeActive();
+    EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)this);
+    DeleteObject(hBgBrush);
+    if (pfnDwmSetWindowAttribute)
+    {
+      BOOL dark = darkMode ? TRUE : FALSE;
+      pfnDwmSetWindowAttribute(hDlg, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
+    }
+    hBgBrush = CreateSolidBrush(darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
+    InvalidateRect(hDlg, nullptr, TRUE);
+  }
+
 private:
   HDC hdc;
   HPEN hPen;
@@ -205,6 +259,72 @@ private:
       EnumChildWindows(hWnd, EnumFunc, (LPARAM)&app_state);
     }
     return 1;
+  }
+
+  static bool IsDarkModeActive()
+  {
+    DWORD value = 1;
+    DWORD size = sizeof(value);
+    HKEY key;
+    if (RegOpenKeyExA(HKEY_CURRENT_USER,
+                      "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+                      0, KEY_READ, &key) == ERROR_SUCCESS)
+    {
+      RegQueryValueExA(key, "AppsUseLightTheme", nullptr, nullptr, (LPBYTE)&value, &size);
+      RegCloseKey(key);
+    }
+    return value == 0;
+  }
+
+  static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+  {
+    app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+    if (app_state.darkMode)
+    {
+      if (msg == WM_ERASEBKGND)
+      {
+        RECT rc;
+        GetClientRect(hwnd, &rc);
+        FillRect((HDC)wParam, &rc, (HBRUSH)app_state.hBgBrush);
+        return 1;
+      }
+      if (msg == WM_PAINT)
+      {
+        CHAR text[256];
+        GetWindowTextA(hwnd, text, sizeof(text));
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+        RECT rc;
+        GetClientRect(hwnd, &rc);
+        FillRect(hdc, &rc, (HBRUSH)app_state.hBgBrush);
+        HFONT hFont = (HFONT)SendMessageA(hwnd, WM_GETFONT, 0, 0);
+        HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
+        SIZE sz;
+        GetTextExtentPoint32A(hdc, "A", 1, &sz);
+        /* Draw a simple gray border; top edge sits at mid-height of the caption */
+        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(80, 80, 80));
+        HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+        HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+        Rectangle(hdc, rc.left, rc.top + sz.cy / 2, rc.right - 1, rc.bottom - 1);
+        SelectObject(hdc, hOldBrush);
+        SelectObject(hdc, hOldPen);
+        DeleteObject(hPen);
+        /* Draw caption text over the top border line */
+        if (text[0])
+        {
+          SetTextColor(hdc, RGB(242, 242, 242));
+          SetBkMode(hdc, TRANSPARENT);
+          UINT dtFlags = DT_TOP | DT_SINGLELINE;
+          dtFlags |= (GetWindowLongA(hwnd, GWL_STYLE) & BS_CENTER) ? DT_CENTER : DT_LEFT;
+          RECT textRc = {rc.left + 8, rc.top, rc.right - 8, rc.top + sz.cy};
+          DrawTextA(hdc, text, -1, &textRc, dtFlags);
+        }
+        SelectObject(hdc, hOldFont);
+        EndPaint(hwnd, &ps);
+        return 0;
+      }
+    }
+    return CallWindowProcA(app_state.origGroupBoxProc, hwnd, msg, wParam, lParam);
   }
 };
 
@@ -367,20 +487,6 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
   return CallWindowProcA(app_state.mainDialogProc, hWnd, msg, wParam, lParam);
 }
 
-static void DrawBitmapPreview(app_state_t &app_state, HWND hwndDlg, int ctrlId, DRAWITEMSTRUCT *dis)
-{
-  HDC destDC = dis->hDC;
-  if (app_state.hBannerBitmap)
-  {
-    HDC compatibleDC = CreateCompatibleDC(destDC);
-    SelectObject(compatibleDC, app_state.hBannerBitmap);
-    StretchBlt(destDC, dis->rcItem.left, dis->rcItem.top,
-               dis->rcItem.right - dis->rcItem.left, dis->rcItem.bottom - dis->rcItem.top,
-               compatibleDC, 0, 0, app_state.bannerBitmapWidth, app_state.bannerBitmapHeight, SRCCOPY);
-    DeleteDC(compatibleDC);
-  }
-}
-
 static void PositionWindowBottomRight(HWND hWnd)
 {
   RECT pvParam;
@@ -388,112 +494,6 @@ static void PositionWindowBottomRight(HWND hWnd)
   SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
   GetWindowRect(hWnd, &rect);
   SetWindowPos(hWnd, nullptr, pvParam.right + rect.left - rect.right, pvParam.bottom + rect.top - rect.bottom, 0, 0, SWP_NOSIZE);
-}
-
-static bool IsDarkModeActive()
-{
-  DWORD value = 1;
-  DWORD size = sizeof(value);
-  HKEY key;
-  if (RegOpenKeyExA(HKEY_CURRENT_USER,
-                    "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-                    0, KEY_READ, &key) == ERROR_SUCCESS)
-  {
-    RegQueryValueExA(key, "AppsUseLightTheme", nullptr, nullptr, (LPBYTE)&value, &size);
-    RegCloseKey(key);
-  }
-  return value == 0;
-}
-
-static LRESULT CALLBACK GroupBoxWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-  app_state_t &app_state = *(app_state_t *)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
-  if (app_state.darkMode)
-  {
-    if (msg == WM_ERASEBKGND)
-    {
-      RECT rc;
-      GetClientRect(hwnd, &rc);
-      FillRect((HDC)wParam, &rc, (HBRUSH)app_state.hBgBrush);
-      return 1;
-    }
-    if (msg == WM_PAINT)
-    {
-      CHAR text[256];
-      GetWindowTextA(hwnd, text, sizeof(text));
-      PAINTSTRUCT ps;
-      HDC hdc = BeginPaint(hwnd, &ps);
-      RECT rc;
-      GetClientRect(hwnd, &rc);
-      FillRect(hdc, &rc, (HBRUSH)app_state.hBgBrush);
-      HFONT hFont = (HFONT)SendMessageA(hwnd, WM_GETFONT, 0, 0);
-      HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
-      SIZE sz;
-      GetTextExtentPoint32A(hdc, "A", 1, &sz);
-      /* Draw a simple gray border; top edge sits at mid-height of the caption */
-      HPEN hPen = CreatePen(PS_SOLID, 1, RGB(80, 80, 80));
-      HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
-      HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
-      Rectangle(hdc, rc.left, rc.top + sz.cy / 2, rc.right - 1, rc.bottom - 1);
-      SelectObject(hdc, hOldBrush);
-      SelectObject(hdc, hOldPen);
-      DeleteObject(hPen);
-      /* Draw caption text over the top border line */
-      if (text[0])
-      {
-        SetTextColor(hdc, RGB(242, 242, 242));
-        SetBkMode(hdc, TRANSPARENT);
-        UINT dtFlags = DT_TOP | DT_SINGLELINE;
-        dtFlags |= (GetWindowLongA(hwnd, GWL_STYLE) & BS_CENTER) ? DT_CENTER : DT_LEFT;
-        RECT textRc = {rc.left + 8, rc.top, rc.right - 8, rc.top + sz.cy};
-        DrawTextA(hdc, text, -1, &textRc, dtFlags);
-      }
-      SelectObject(hdc, hOldFont);
-      EndPaint(hwnd, &ps);
-      return 0;
-    }
-  }
-  return CallWindowProcA(app_state.origGroupBoxProc, hwnd, msg, wParam, lParam);
-}
-
-static BOOL CALLBACK ApplyThemeToChild(HWND hwnd, LPARAM lParam)
-{
-  app_state_t &app_state = *(app_state_t *)lParam;
-  CHAR cls[64];
-  GetClassNameA(hwnd, cls, sizeof(cls));
-  if (lstrcmpiA(cls, "Button") == 0)
-  {
-    DWORD style = (DWORD)GetWindowLongA(hwnd, GWL_STYLE) & 0x0F;
-    if (style == BS_GROUPBOX)
-    {
-      /* Subclass once for custom dark WM_PAINT; no theme override needed */
-      WNDPROC cur = (WNDPROC)GetWindowLongPtrA(hwnd, GWLP_WNDPROC);
-      if (cur != GroupBoxWndProc)
-      {
-        if (!app_state.origGroupBoxProc)
-          app_state.origGroupBoxProc = cur;
-        SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)GroupBoxWndProc);
-        SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&app_state);
-      }
-    }
-    else if (app_state.pfnSetWindowTheme)
-      app_state.pfnSetWindowTheme(hwnd, app_state.darkMode ? L"DarkMode_Explorer" : L"", nullptr);
-  }
-  return TRUE;
-}
-
-static void ApplyDarkMode(app_state_t &app_state, HWND hDlg)
-{
-  app_state.darkMode = IsDarkModeActive();
-  EnumChildWindows(hDlg, ApplyThemeToChild, (LPARAM)&app_state);
-  DeleteObject(app_state.hBgBrush);
-  if (app_state.pfnDwmSetWindowAttribute)
-  {
-    BOOL dark = app_state.darkMode ? TRUE : FALSE;
-    app_state.pfnDwmSetWindowAttribute(hDlg, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &dark, sizeof(dark));
-  }
-  app_state.hBgBrush = CreateSolidBrush(app_state.darkMode ? RGB(30, 30, 30) : GetSysColor(COLOR_BTNFACE));
-  InvalidateRect(hDlg, nullptr, TRUE);
 }
 
 static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
@@ -524,7 +524,7 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     break;
   case WM_DRAWITEM:
     if (wParam == IDC_LOGO_PREVIEW)
-      DrawBitmapPreview(app_state, hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
+      app_state.DrawBitmapPreview(hDlg, IDC_LOGO_PREVIEW, (DRAWITEMSTRUCT *)lParam);
     break;
   case WM_SHOWWINDOW:
   {
@@ -620,7 +620,7 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     }
     break;
   case WM_SETTINGCHANGE:
-    ApplyDarkMode(app_state, hDlg);
+    app_state.ApplyDarkMode(hDlg);
     break;
   case WM_CTLCOLORDLG:
   {
@@ -662,7 +662,7 @@ extern "C" void start()
   app_state_t state;
   SecureZeroMemory(&state, sizeof(app_state_t));
   state.InitResources();
-  ApplyDarkMode(state, hwnd);
+  state.ApplyDarkMode(hwnd);
   SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
   ShowWindow(hwnd, SW_SHOW);
   MSG msg;
