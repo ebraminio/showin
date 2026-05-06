@@ -528,8 +528,6 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     break;
   case WM_SHOWWINDOW:
   {
-    app_state.InitResources();
-    ApplyDarkMode(app_state, hDlg);
     HWND hDlga = GetDlgItem(hDlg, IDC_DRAG_BTN);
     HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
     HICON IconA = LoadIconA(hInst, MAKEINTRESOURCEA(IDI_APP));
@@ -657,12 +655,14 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 extern "C" void start()
 {
-  app_state_t state;
-  SecureZeroMemory(&state, sizeof(app_state_t));
   TryEnableDpiAwareness();
   HINSTANCE hInst = reinterpret_cast<HINSTANCE>(&__ImageBase);
   HWND hwnd = CreateDialogParamA(hInst, MAKEINTRESOURCEA(IDD_MAIN), nullptr, (DLGPROC)DialogFunc, 0);
   PositionWindowBottomRight(hwnd);
+  app_state_t state;
+  SecureZeroMemory(&state, sizeof(app_state_t));
+  state.InitResources();
+  ApplyDarkMode(state, hwnd);
   SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)&state);
   ShowWindow(hwnd, SW_SHOW);
   MSG msg;
