@@ -212,14 +212,14 @@ private:
     bannerBitmapHeight = pv.bmHeight;
   }
 
-  UINT GetSystemDpi()
+  static UINT GetSystemDpi()
   {
     typedef UINT(WINAPI * PFN)();
     PFN pfn = (PFN)GetProcAddress(GetModuleHandleA("user32.dll"), "GetDpiForSystem");
     return pfn ? pfn() : 96;
   }
 
-  HFONT CreateMonospaceFont()
+  static HFONT CreateMonospaceFont()
   {
     LOGFONTA lf;
     SecureZeroMemory(&lf, sizeof(LOGFONTA));
@@ -233,7 +233,7 @@ private:
     return CreateFontIndirectA(&lf);
   }
 
-  HFONT CreateSansSerifFont()
+  static HFONT CreateSansSerifFont()
   {
     LOGFONTA lf;
     SecureZeroMemory(&lf, sizeof(LOGFONTA));
@@ -487,15 +487,6 @@ LRESULT CALLBACK CrosshairWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
   return CallWindowProcA(app_state.mainDialogProc, hWnd, msg, wParam, lParam);
 }
 
-static void PositionWindowBottomRight(HWND hWnd)
-{
-  RECT pvParam;
-  struct tagRECT rect;
-  SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
-  GetWindowRect(hWnd, &rect);
-  SetWindowPos(hWnd, nullptr, pvParam.right + rect.left - rect.right, pvParam.bottom + rect.top - rect.bottom, 0, 0, SWP_NOSIZE);
-}
-
 static void SetControlFont(HWND hDlg, int nIDDlgItem, HGDIOBJ font)
 {
   SendMessageA(GetDlgItem(hDlg, nIDDlgItem), WM_SETFONT, (WPARAM)font, TRUE);
@@ -651,6 +642,15 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     return 0;
   }
   return 1;
+}
+
+static void PositionWindowBottomRight(HWND hWnd)
+{
+  RECT pvParam;
+  struct tagRECT rect;
+  SystemParametersInfoA(SPI_GETWORKAREA, 0, &pvParam, 0);
+  GetWindowRect(hWnd, &rect);
+  SetWindowPos(hWnd, nullptr, pvParam.right + rect.left - rect.right, pvParam.bottom + rect.top - rect.bottom, 0, 0, SWP_NOSIZE);
 }
 
 extern "C" void start()
