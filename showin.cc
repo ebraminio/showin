@@ -498,7 +498,7 @@ static LRESULT CALLBACK DialogFunc(HWND hDlg, UINT msg, WPARAM wParam, LPARAM lP
     app_state.EraseHighlightRect();
     app_state.CleanupResources();
     EndDialog(hDlg, lParam);
-    ExitProcess(0);
+    PostQuitMessage(0);
     break;
   case WM_DRAWITEM:
     if (wParam == IDC_LOGO_PREVIEW)
